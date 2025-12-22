@@ -91,6 +91,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+
     // Build type configurations
     buildTypes {
         release {
@@ -117,14 +118,19 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 
-    // Kotlin compiler settings
-    kotlinOptions {
-        jvmTarget = "11" // Match Java version for compatibility
-    }
-
     // Enable Jetpack Compose UI toolkit
     buildFeatures {
         compose = true
+    }
+}
+
+/**
+ * Kotlin compiler configuration
+ * Using compilerOptions DSL for Kotlin 2.3.0+ (replaces deprecated kotlinOptions)
+ */
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
     }
 }
 
@@ -186,6 +192,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics) // Graphics and drawing APIs
     implementation(libs.androidx.compose.ui.tooling.preview) // Preview support for Android Studio
     implementation(libs.androidx.compose.material3) // Material Design 3 components
+    implementation("androidx.compose.material:material-icons-extended") // Material Icons (managed by BOM)
 
     // Architecture components
     implementation(libs.androidx.lifecycle.viewmodel.compose) // ViewModel integration with Compose
