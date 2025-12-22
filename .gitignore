@@ -156,7 +156,7 @@ nbactions.xml
 nb-configuration.xml
 
 # Gradle Wrapper (uncomment if you want to include wrapper)
-# !gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.jar
 
 # Local environment variables
 .env
