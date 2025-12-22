@@ -1,0 +1,28 @@
+<!--
+    String resources for the Thought Smith Android application.
+    
+    This file contains all user-facing text strings used throughout the app.
+    Centralizing strings here enables:
+    - Easy localization and internationalization
+    - Consistent text across the application
+    - Text reuse and maintenance
+    - Accessibility support
+    
+    For future localization, additional resource directories can be created:
+    - values-es/ for Spanish translations
+    - values-fr/ for French translations
+    - values-de/ for German translations, etc.
+    
+    @author TheWinterShadow
+    @since 1.0.0
+-->
+<resources>
+    <!-- 
+        Application name displayed in:
+        - Android launcher/home screen
+        - App switcher/recent apps
+        - System settings
+        - Activity title bars
+    -->
+    <string name="app_name">Thought Smith</string>
+</resources>

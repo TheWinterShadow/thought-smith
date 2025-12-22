@@ -1,0 +1,327 @@
+# APK Build and Release workflow for Thought Smith Android App
+#
+# This workflow builds release APKs for distribution outside of app stores.
+# It can be triggered manually or automatically on version tags.
+#
+# Features:
+# - Builds signed release APK
+# - Creates GitHub release with APK attachment
+# - Semantic versioning support
+# - Build artifact storage
+# - Automatic changelog generation
+#
+# Prerequisites:
+# - KEYSTORE_FILE: Base64 encoded keystore file (GitHub secret)
+# - KEYSTORE_PASSWORD: Keystore password (GitHub secret)
+# - KEY_ALIAS: Key alias name (GitHub secret)
+# - KEY_PASSWORD: Key password (GitHub secret)
+#
+# Triggers:
+# - Manual workflow dispatch with version input
+# - Push of version tags (v1.0.0, v1.1.0, etc.)
+#
+# @author TheWinterShadow
+# @since 1.0.0
+
+name: Build Release APK
+
+on:
+    # Manual trigger with version input
+    workflow_dispatch:
+        inputs:
+            version_name:
+                description: "Version name (e.g., 1.0.0)"
+                required: true
+                type: string
+            version_code:
+                description: "Version code (integer, increment from previous)"
+                required: true
+                type: number
+            create_release:
+                description: "Create GitHub release"
+                required: false
+                default: true
+                type: boolean
+
+    # Automatic trigger on version tags
+    push:
+        tags:
+            - "v*.*.*" # Matches v1.0.0, v1.1.0, etc.
+
+# Ensure only one release build runs at a time
+concurrency:
+    group: ${{ github.workflow }}
+    cancel-in-progress: false
+
+env:
+    # APK file names
+    DEBUG_APK: app-debug.apk
+    RELEASE_APK: thought-smith-release.apk
+
+jobs:
+    # Build release APK
+    build-release:
+        name: Build Release APK
+        runs-on: ubuntu-latest
+
+        outputs:
+            version_name: ${{ steps.version.outputs.version_name }}
+            version_code: ${{ steps.version.outputs.version_code }}
+            apk_path: ${{ steps.build.outputs.apk_path }}
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Set up JDK 17
+              uses: actions/setup-java@v4
+              with:
+                  java-version: "17"
+                  distribution: "temurin"
+
+            - name: Setup Android SDK
+              uses: android-actions/setup-android@v3
+
+            - name: Cache Gradle dependencies
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.gradle/caches
+                      ~/.gradle/wrapper
+                  key: ${{ runner.os }}-gradle-release-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+                  restore-keys: |
+                      ${{ runner.os }}-gradle-release-
+                      ${{ runner.os }}-gradle-
+
+            - name: Make gradlew executable
+              run: chmod +x ./gradlew
+
+            - name: Determine version information
+              id: version
+              run: |
+                  if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+                    VERSION_NAME="${{ github.event.inputs.version_name }}"
+                    VERSION_CODE="${{ github.event.inputs.version_code }}"
+                  else
+                    # Extract version from tag (remove 'v' prefix)
+                    VERSION_NAME="${{ github.ref_name }}"
+                    VERSION_NAME="${VERSION_NAME#v}"
+                    # Generate version code from version name (major * 10000 + minor * 100 + patch)
+                    IFS='.' read -ra PARTS <<< "$VERSION_NAME"
+                    VERSION_CODE=$((${PARTS[0]} * 10000 + ${PARTS[1]} * 100 + ${PARTS[2]}))
+                  fi
+
+                  echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+                  echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+                  echo "Building version: $VERSION_NAME (code: $VERSION_CODE)"
+
+            - name: Setup keystore
+              env:
+                  KEYSTORE_FILE: ${{ secrets.KEYSTORE_FILE }}
+              run: |
+                  if [ -z "$KEYSTORE_FILE" ]; then
+                    echo "❌ KEYSTORE_FILE secret not found"
+                    echo "Please add the following secrets to your repository:"
+                    echo "- KEYSTORE_FILE (base64 encoded keystore)"
+                    echo "- KEYSTORE_PASSWORD"
+                    echo "- KEY_ALIAS" 
+                    echo "- KEY_PASSWORD"
+                    exit 1
+                  fi
+
+                  # Decode and save keystore with original filename
+                  echo "$KEYSTORE_FILE" | base64 -d > app/androidStore.jks
+
+                  # Create keystore.properties file
+                  cat > app/keystore.properties << EOF
+                  storeFile=androidStore.jks
+                  storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+                  keyAlias=${{ secrets.KEY_ALIAS }}
+                  keyPassword=${{ secrets.KEY_PASSWORD }}
+                  EOF
+
+                  echo "✅ Keystore configured successfully"
+
+            - name: Update version in build.gradle.kts
+              run: |
+                  # Update version name and code in build.gradle.kts
+                  sed -i "s/versionCode = [0-9]*/versionCode = ${{ steps.version.outputs.version_code }}/" app/build.gradle.kts
+                  sed -i "s/versionName = \".*\"/versionName = \"${{ steps.version.outputs.version_name }}\"/" app/build.gradle.kts
+
+                  echo "📝 Updated version information:"
+                  grep -A2 -B2 "versionCode\|versionName" app/build.gradle.kts
+
+            - name: Build release APK
+              id: build
+              run: |
+                  echo "🔨 Building release APK..."
+                  ./gradlew assembleRelease
+
+                  # Verify APK was created
+                  RELEASE_APK_PATH="app/build/outputs/apk/release/app-release.apk"
+                  if [ ! -f "$RELEASE_APK_PATH" ]; then
+                    echo "❌ Release APK was not created at $RELEASE_APK_PATH"
+                    ls -la app/build/outputs/apk/release/ || echo "Release directory not found"
+                    exit 1
+                  fi
+
+                  # Rename APK with version info
+                  VERSIONED_APK="app/build/outputs/apk/release/thought-smith-v${{ steps.version.outputs.version_name }}.apk"
+                  cp "$RELEASE_APK_PATH" "$VERSIONED_APK"
+
+                  # Get APK info
+                  APK_SIZE=$(stat -c%s "$VERSIONED_APK" | numfmt --to=iec-i --suffix=B)
+                  APK_CHECKSUM=$(sha256sum "$VERSIONED_APK" | cut -d' ' -f1)
+
+                  echo "✅ Release APK built successfully"
+                  echo "📦 Size: $APK_SIZE"
+                  echo "🔒 SHA256: $APK_CHECKSUM"
+
+                  echo "apk_path=$VERSIONED_APK" >> $GITHUB_OUTPUT
+                  echo "apk_size=$APK_SIZE" >> $GITHUB_OUTPUT
+                  echo "apk_checksum=$APK_CHECKSUM" >> $GITHUB_OUTPUT
+
+            - name: Upload APK artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: thought-smith-release-apk-v${{ steps.version.outputs.version_name }}
+                  path: ${{ steps.build.outputs.apk_path }}
+                  retention-days: 90
+
+            - name: Upload mapping files (if available)
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: release-mapping-v${{ steps.version.outputs.version_name }}
+                  path: |
+                      app/build/outputs/mapping/release/
+                  retention-days: 90
+
+    # Create GitHub release
+    create-release:
+        name: Create GitHub Release
+        runs-on: ubuntu-latest
+        needs: build-release
+        if: github.event.inputs.create_release != 'false'
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Download APK artifact
+              uses: actions/download-artifact@v4
+              with:
+                  name: thought-smith-release-apk-v${{ needs.build-release.outputs.version_name }}
+                  path: ./
+
+            - name: Generate changelog
+              id: changelog
+              run: |
+                  # Generate changelog from git commits since last tag
+                  if git describe --tags --abbrev=0 2>/dev/null; then
+                    LAST_TAG=$(git describe --tags --abbrev=0)
+                    echo "Generating changelog since $LAST_TAG"
+                    CHANGELOG=$(git log $LAST_TAG..HEAD --pretty=format:"- %s" --no-merges)
+                  else
+                    echo "No previous tags found, generating full changelog"
+                    CHANGELOG=$(git log --pretty=format:"- %s" --no-merges --max-count=20)
+                  fi
+
+                  if [ -z "$CHANGELOG" ]; then
+                    CHANGELOG="- Initial release"
+                  fi
+
+                  # Save changelog to file and output
+                  {
+                    echo "## What's New in v${{ needs.build-release.outputs.version_name }}"
+                    echo ""
+                    echo "$CHANGELOG"
+                    echo ""
+                    echo "## Download"
+                    echo "📱 **thought-smith-v${{ needs.build-release.outputs.version_name }}.apk** - Main application"
+                    echo ""
+                    echo "## Installation"
+                    echo "1. Download the APK file"
+                    echo "2. Enable 'Install from unknown sources' in Android settings"
+                    echo "3. Install the APK"
+                    echo "4. Configure your AI API key in Settings"
+                    echo ""
+                    echo "## Requirements"
+                    echo "- Android 13 (API level 33) or higher"
+                    echo "- Internet connection for AI features"
+                    echo "- AI API key (OpenAI, Google Gemini, or Anthropic Claude)"
+                  } > release_notes.md
+
+                  echo "Generated release notes:"
+                  cat release_notes.md
+
+            - name: Create GitHub Release
+              uses: softprops/action-gh-release@v1
+              with:
+                  tag_name: v${{ needs.build-release.outputs.version_name }}
+                  name: Thought Smith v${{ needs.build-release.outputs.version_name }}
+                  body_path: release_notes.md
+                  draft: false
+                  prerelease: false
+                  files: |
+                      thought-smith-v${{ needs.build-release.outputs.version_name }}.apk
+                  generate_release_notes: true
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    # Build debug APK for testing
+    build-debug:
+        name: Build Debug APK
+        runs-on: ubuntu-latest
+        if: github.event_name == 'workflow_dispatch'
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up JDK 17
+              uses: actions/setup-java@v4
+              with:
+                  java-version: "17"
+                  distribution: "temurin"
+
+            - name: Setup Android SDK
+              uses: android-actions/setup-android@v3
+
+            - name: Cache Gradle dependencies
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.gradle/caches
+                      ~/.gradle/wrapper
+                  key: ${{ runner.os }}-gradle-debug-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+                  restore-keys: |
+                      ${{ runner.os }}-gradle-debug-
+                      ${{ runner.os }}-gradle-
+
+            - name: Make gradlew executable
+              run: chmod +x ./gradlew
+
+            - name: Build debug APK
+              run: |
+                  echo "🔨 Building debug APK for testing..."
+                  ./gradlew assembleDebug
+
+                  # Rename debug APK
+                  DEBUG_APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
+                  VERSIONED_DEBUG_APK="app/build/outputs/apk/debug/thought-smith-debug-v${{ github.event.inputs.version_name }}.apk"
+                  cp "$DEBUG_APK_PATH" "$VERSIONED_DEBUG_APK"
+
+                  echo "✅ Debug APK built successfully"
+                  ls -la app/build/outputs/apk/debug/
+
+            - name: Upload debug APK
+              uses: actions/upload-artifact@v4
+              with:
+                  name: thought-smith-debug-apk-v${{ github.event.inputs.version_name }}
+                  path: app/build/outputs/apk/debug/thought-smith-debug-v${{ github.event.inputs.version_name }}.apk
+                  retention-days: 30

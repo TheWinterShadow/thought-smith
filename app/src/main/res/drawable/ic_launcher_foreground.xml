@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Brain shape (simplified) -->
+    <group>
+        <!-- Main brain outline -->
+        <path
+            android:pathData="M54,30 Q45,35 40,45 Q35,55 38,65 Q40,75 45,80 Q50,85 54,88 Q58,85 63,80 Q68,75 70,65 Q73,55 68,45 Q63,35 54,30 Z"
+            android:fillColor="#6B9BD2"
+            android:strokeWidth="1"
+            android:strokeColor="#4A7BA7" />
+        
+        <!-- Brain circuitry lines -->
+        <path
+            android:pathData="M45,50 L50,55 L48,60 L52,65"
+            android:strokeWidth="1.5"
+            android:strokeColor="#A8C8E8"
+            android:fillColor="#00000000" />
+        <path
+            android:pathData="M60,50 L55,55 L57,60 L53,65"
+            android:strokeWidth="1.5"
+            android:strokeColor="#A8C8E8"
+            android:fillColor="#00000000" />
+        <path
+            android:pathData="M50,70 L54,75 L52,80"
+            android:strokeWidth="1.5"
+            android:strokeColor="#A8C8E8"
+            android:fillColor="#00000000" />
+        
+        <!-- Circuit nodes -->
+        <path
+            android:pathData="M47,52m-2,0a2,2 0,1 1,4 0a2,2 0,1 1,-4 0"
+            android:fillColor="#E8F0F8" />
+        <path
+            android:pathData="M61,52m-2,0a2,2 0,1 1,4 0a2,2 0,1 1,-4 0"
+            android:fillColor="#E8F0F8" />
+        <path
+            android:pathData="M51,72m-2,0a2,2 0,1 1,4 0a2,2 0,1 1,-4 0"
+            android:fillColor="#E8F0F8" />
+    </group>
+    
+    <!-- Gear icon overlay (simplified) -->
+    <group android:translateX="65" android:translateY="50">
+        <path
+            android:pathData="M0,0 L0,-8 L3,-8 L3,-10 L-3,-10 L-3,-8 L0,-8 M0,0 L0,8 L3,8 L3,10 L-3,10 L-3,8 L0,8 M0,0 L-8,0 L-8,3 L-10,3 L-10,-3 L-8,-3 L-8,0 M0,0 L8,0 L8,3 L10,3 L10,-3 L8,-3 L8,0"
+            android:strokeWidth="2"
+            android:strokeColor="#A8C8E8"
+            android:fillColor="#00000000" />
+        <path
+            android:pathData="M0,0m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0"
+            android:fillColor="#6B9BD2" />
+    </group>
+    
+    <!-- White T logo emerging from top -->
+    <group android:translateX="54" android:translateY="20">
+        <!-- Vertical stem -->
+        <path
+            android:pathData="M-2,-8 L2,-8 L2,0 L-2,0 Z"
+            android:fillColor="#FFFFFF" />
+        <!-- Horizontal bar (wider with flared ends) -->
+        <path
+            android:pathData="M-8,-2 L8,-2 L8,2 L-8,2 Z"
+            android:fillColor="#FFFFFF" />
+        <!-- Flared ends -->
+        <path
+            android:pathData="M-8,-2 L-10,-4 L-8,-6 L-6,-4 Z"
+            android:fillColor="#FFFFFF" />
+        <path
+            android:pathData="M8,-2 L10,-4 L8,-6 L6,-4 Z"
+            android:fillColor="#FFFFFF" />
+    </group>
+    
+    <!-- Quill pen -->
+    <group android:translateX="70" android:translateY="65">
+        <!-- Pen tip -->
+        <path
+            android:pathData="M0,0 L-3,8 L-1,8 L0,6 L1,8 L3,8 Z"
+            android:fillColor="#A8C8E8"
+            android:strokeWidth="1"
+            android:strokeColor="#6B9BD2" />
+        <!-- Pen body -->
+        <path
+            android:pathData="M-1,8 L-1,18 L1,18 L1,8 Z"
+            android:fillColor="#9B8FB8"
+            android:strokeWidth="1"
+            android:strokeColor="#7A6B95" />
+        <!-- Feathers -->
+        <path
+            android:pathData="M-1,18 Q-4,20 -3,22 Q-2,24 -1,22"
+            android:fillColor="#C4BAD4"
+            android:strokeWidth="0.5"
+            android:strokeColor="#9B8FB8" />
+        <path
+            android:pathData="M-1,18 Q-2,20 -1,22 Q0,24 1,22"
+            android:fillColor="#E8E4F0"
+            android:strokeWidth="0.5"
+            android:strokeColor="#C4BAD4" />
+        <path
+            android:pathData="M1,18 Q4,20 3,22 Q2,24 1,22"
+            android:fillColor="#C4BAD4"
+            android:strokeWidth="0.5"
+            android:strokeColor="#9B8FB8" />
+    </group>
+    
+    <!-- Heartbeat waveform line -->
+    <path
+        android:pathData="M20,85 L25,85 L27,80 L29,90 L31,75 L33,85 L38,85 L40,82 L42,88 L44,80 L46,85 L88,85"
+        android:strokeWidth="3"
+        android:strokeColor="#A8C8E8"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    
+    <!-- AI text (small) -->
+    <group android:translateX="54" android:translateY="95">
+        <path
+            android:pathData="M-8,-3 L-6,-3 L-6,3 L-8,3 Z M-4,-3 L-2,-3 L-2,3 L-4,3 Z"
+            android:fillColor="#FFFFFF" />
+        <path
+            android:pathData="M0,-3 L2,-3 L2,3 L0,3 Z M4,-3 L6,-3 L6,-1 L4,-1 Z M4,1 L6,1 L6,3 L4,3 Z"
+            android:fillColor="#FFFFFF" />
+    </group>
+    
+    <!-- THOUGHT SMITH text (larger, simplified as "TS") -->
+    <group android:translateX="54" android:translateY="102">
+        <!-- T -->
+        <path
+            android:pathData="M-6,-4 L6,-4 L6,-2 L-6,-2 Z M-1,-4 L1,-4 L1,4 L-1,4 Z"
+            android:fillColor="#FFFFFF" />
+        <!-- S -->
+        <path
+            android:pathData="M2,-4 L6,-4 L6,-2 L4,-2 L4,-1 L6,-1 L6,1 L2,1 L2,-1 L4,-1 M2,1 L6,1 L6,4 L2,4 L2,2 L4,2 L4,1"
+            android:fillColor="#FFFFFF" />
+    </group>
+</vector>
+
