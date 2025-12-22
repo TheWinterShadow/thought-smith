@@ -1,11 +1,15 @@
 package com.thewintershadow.thoughtsmith.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
@@ -17,15 +21,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalContext
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.thewintershadow.thoughtsmith.data.Message
 import com.thewintershadow.thoughtsmith.repository.FileStorageService
@@ -40,15 +40,16 @@ import java.util.Locale
 @Composable
 fun ChatScreen(
     onNavigateToSettings: () -> Unit,
-    viewModel: ChatViewModel = viewModel(
-        factory = ViewModelFactory(LocalContext.current.applicationContext as android.app.Application)
-    )
+    viewModel: ChatViewModel =
+        viewModel(
+            factory = ViewModelFactory(LocalContext.current.applicationContext as android.app.Application),
+        ),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var messageText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
-    
+
     // Auto-scroll to bottom when new messages arrive
     LaunchedEffect(uiState.messages.size) {
         if (uiState.messages.isNotEmpty()) {
@@ -57,32 +58,34 @@ fun ChatScreen(
             }
         }
     }
-    
+
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val fileStorageService = remember { FileStorageService(context) }
-    
+
     // File picker launcher
-    val filePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("text/markdown")
-    ) { uri ->
-        if (uri != null && uiState.formattedSummary != null) {
-            coroutineScope.launch {
-                val result = fileStorageService.saveJournalEntryToUri(
-                    uri = uri,
-                    content = uiState.formattedSummary!!
-                )
-                viewModel.onFileSaved(
-                    success = result.isSuccess,
-                    filePath = result.getOrNull()
-                )
+    val filePickerLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.CreateDocument("text/markdown"),
+        ) { uri ->
+            if (uri != null && uiState.formattedSummary != null) {
+                coroutineScope.launch {
+                    val result =
+                        fileStorageService.saveJournalEntryToUri(
+                            uri = uri,
+                            content = uiState.formattedSummary!!,
+                        )
+                    viewModel.onFileSaved(
+                        success = result.isSuccess,
+                        filePath = result.getOrNull(),
+                    )
+                }
+            } else if (uri == null && uiState.isSaving) {
+                // User cancelled file picker
+                viewModel.onFileSaved(success = false)
             }
-        } else if (uri == null && uiState.isSaving) {
-            // User cancelled file picker
-            viewModel.onFileSaved(success = false)
         }
-    }
-    
+
     // Show error snackbar
     LaunchedEffect(uiState.error) {
         uiState.error?.let { error ->
@@ -90,7 +93,7 @@ fun ChatScreen(
             viewModel.clearError()
         }
     }
-    
+
     // Show success snackbar
     LaunchedEffect(uiState.saveSuccess) {
         uiState.saveSuccess?.let {
@@ -98,7 +101,7 @@ fun ChatScreen(
             viewModel.clearSaveSuccess()
         }
     }
-    
+
     // Show file picker when user accepts summary
     LaunchedEffect(uiState.isSaving) {
         if (uiState.isSaving && uiState.formattedSummary != null) {
@@ -110,7 +113,7 @@ fun ChatScreen(
             filePickerLauncher.launch(fileName)
         }
     }
-    
+
     Scaffold(
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState)
@@ -121,78 +124,83 @@ fun ChatScreen(
                     Text(
                         "Thought Smith",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
+                        fontSize = 20.sp,
                     )
                 },
                 actions = {
                     IconButton(
                         onClick = { viewModel.clearChat() },
-                        enabled = uiState.messages.size > 1 // More than just the welcome message
+                        enabled = uiState.messages.size > 1, // More than just the welcome message
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Clear Chat",
-                            tint = if (uiState.messages.size > 1) {
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
-                            }
+                            tint =
+                                if (uiState.messages.size > 1) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
+                                },
                         )
                     }
                     IconButton(
                         onClick = { viewModel.saveJournalEntry() },
-                        enabled = uiState.messages.isNotEmpty() && !uiState.isSaving && !uiState.isGeneratingSummary
+                        enabled = uiState.messages.isNotEmpty() && !uiState.isSaving && !uiState.isGeneratingSummary,
                     ) {
                         Icon(
                             imageVector = Icons.Default.Done,
                             contentDescription = "Save Journal Entry",
-                            tint = if (uiState.messages.isNotEmpty() && !uiState.isSaving) {
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
-                            }
+                            tint =
+                                if (uiState.messages.isNotEmpty() && !uiState.isSaving) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
+                                },
                         )
                     }
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings"
+                            contentDescription = "Settings",
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ),
             )
-        }
+        },
     ) { paddingValues ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(MaterialTheme.colorScheme.background)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .background(MaterialTheme.colorScheme.background),
         ) {
             // Messages list
             LazyColumn(
                 state = listState,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(uiState.messages) { message ->
                     MessageBubble(message = message)
                 }
-                
+
                 if (uiState.isLoading) {
                     item {
                         LoadingIndicator()
                     }
                 }
             }
-            
+
             // Input field
             MessageInputBar(
                 messageText = messageText,
@@ -201,10 +209,10 @@ fun ChatScreen(
                     viewModel.sendMessage(messageText)
                     messageText = ""
                 },
-                enabled = !uiState.isLoading && messageText.isNotBlank()
+                enabled = !uiState.isLoading && messageText.isNotBlank(),
             )
         }
-        
+
         // Preview Dialog
         if (uiState.formattedSummary != null) {
             SummaryPreviewDialog(
@@ -215,7 +223,7 @@ fun ChatScreen(
                 },
                 onReject = {
                     viewModel.rejectSummary()
-                }
+                },
             )
         }
     }
@@ -226,7 +234,7 @@ fun SummaryPreviewDialog(
     formattedContent: String,
     isGenerating: Boolean,
     onAccept: () -> Unit,
-    onReject: () -> Unit
+    onReject: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onReject,
@@ -234,20 +242,21 @@ fun SummaryPreviewDialog(
             Text(
                 "Preview Journal Entry",
                 fontWeight = FontWeight.Bold,
-                fontSize = 20.sp
+                fontSize = 20.sp,
             )
         },
         text = {
             if (isGenerating) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         CircularProgressIndicator()
                         Text("Generating formatted summary...")
@@ -255,18 +264,20 @@ fun SummaryPreviewDialog(
                 }
             } else {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 400.dp)
-                        .verticalScroll(rememberScrollState())
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 400.dp)
+                            .verticalScroll(rememberScrollState()),
                 ) {
                     Text(
                         text = formattedContent,
                         modifier = Modifier.fillMaxWidth(),
-                        style = TextStyle(
-                            fontSize = 14.sp,
-                            lineHeight = 20.sp
-                        )
+                        style =
+                            TextStyle(
+                                fontSize = 14.sp,
+                                lineHeight = 20.sp,
+                            ),
                     )
                 }
             }
@@ -274,7 +285,7 @@ fun SummaryPreviewDialog(
         confirmButton = {
             Button(
                 onClick = onAccept,
-                enabled = !isGenerating
+                enabled = !isGenerating,
             ) {
                 Text("Save")
             }
@@ -284,7 +295,7 @@ fun SummaryPreviewDialog(
                 Text("Cancel")
             }
         },
-        modifier = Modifier.fillMaxWidth(0.9f)
+        modifier = Modifier.fillMaxWidth(0.9f),
     )
 }
 
@@ -292,35 +303,37 @@ fun SummaryPreviewDialog(
 fun MessageBubble(message: Message) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (message.isUser) Arrangement.End else Arrangement.Start
+        horizontalArrangement = if (message.isUser) Arrangement.End else Arrangement.Start,
     ) {
         Box(
-            modifier = Modifier
-                .widthIn(max = 280.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(
-                    if (message.isUser) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.surfaceVariant
-                    }
-                )
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+            modifier =
+                Modifier
+                    .widthIn(max = 280.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(
+                        if (message.isUser) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        },
+                    ).padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            val textColor = if (message.isUser) {
-                MaterialTheme.colorScheme.onPrimary
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            }
-            
+            val textColor =
+                if (message.isUser) {
+                    MaterialTheme.colorScheme.onPrimary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
+
             Text(
                 text = message.content,
                 modifier = Modifier.fillMaxWidth(),
-                style = TextStyle(
-                    color = textColor,
-                    fontSize = 16.sp,
-                    lineHeight = 22.sp
-                )
+                style =
+                    TextStyle(
+                        color = textColor,
+                        fontSize = 16.sp,
+                        lineHeight = 22.sp,
+                    ),
             )
         }
     }
@@ -330,18 +343,19 @@ fun MessageBubble(message: Message) {
 fun LoadingIndicator() {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Start
+        horizontalArrangement = Arrangement.Start,
     ) {
         Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .padding(16.dp)
+            modifier =
+                Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(16.dp),
         ) {
             CircularProgressIndicator(
                 modifier = Modifier.size(24.dp),
                 strokeWidth = 2.dp,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
             )
         }
     }
@@ -352,19 +366,20 @@ fun MessageInputBar(
     messageText: String,
     onMessageTextChange: (String) -> Unit,
     onSendClick: () -> Unit,
-    enabled: Boolean
+    enabled: Boolean,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 8.dp
+        shadowElevation = 8.dp,
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             OutlinedTextField(
                 value = messageText,
@@ -372,40 +387,42 @@ fun MessageInputBar(
                 modifier = Modifier.weight(1f),
                 placeholder = { Text("Type your thoughts...") },
                 shape = RoundedCornerShape(24.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent
-                ),
-                maxLines = 4
+                colors =
+                    OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
+                    ),
+                maxLines = 4,
             )
-            
+
             IconButton(
                 onClick = onSendClick,
                 enabled = enabled,
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(
-                        if (enabled) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        }
-                    )
+                modifier =
+                    Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(
+                            if (enabled) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            },
+                        ),
             ) {
                 Icon(
                     imageVector = Icons.Default.Send,
                     contentDescription = "Send",
-                    tint = if (enabled) {
-                        MaterialTheme.colorScheme.onPrimary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    }
+                    tint =
+                        if (enabled) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        },
                 )
             }
         }
     }
 }
-
