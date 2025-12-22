@@ -40,7 +40,10 @@ plugins {
 // This keeps sensitive signing information out of version control
 val keystorePropertiesFile = rootProject.file("app/keystore.properties")
 val keystoreProperties = Properties()
-keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+val hasKeystoreProperties = keystorePropertiesFile.exists()
+if (hasKeystoreProperties) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
 
 /**
  * Main Android configuration block
@@ -48,11 +51,13 @@ keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 android {
     // Configure release signing with keystore for app store distribution
     signingConfigs {
-        create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
-            storeFile = file(keystoreProperties["storeFile"] as String)
-            storePassword = keystoreProperties["storePassword"] as String
+        if (hasKeystoreProperties) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
         }
     }
 
@@ -98,8 +103,10 @@ android {
                 "proguard-rules.pro"
             )
             
-            // Apply release signing configuration
-            signingConfig = signingConfigs.getByName("release")
+            // Apply release signing configuration if available
+            if (hasKeystoreProperties) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
     
