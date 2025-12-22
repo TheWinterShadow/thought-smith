@@ -91,7 +91,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-
     // Build type configurations
     buildTypes {
         release {
