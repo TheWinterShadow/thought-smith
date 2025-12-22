@@ -34,6 +34,7 @@ plugins {
     alias(libs.plugins.android.application)  // Android app support
     alias(libs.plugins.kotlin.android)       // Kotlin language support
     alias(libs.plugins.kotlin.compose)       // Compose compiler plugin
+    alias(libs.plugins.ktlint)               // Kotlin linting and formatting
 }
 
 // Load signing configuration from keystore.properties file
@@ -124,6 +125,36 @@ android {
     // Enable Jetpack Compose UI toolkit
     buildFeatures {
         compose = true
+    }
+}
+
+/**
+ * Ktlint configuration for code formatting and linting
+ */
+ktlint {
+    // Use latest version of ktlint
+    version.set("1.4.1")
+    
+    // Enable additional rule sets
+    additionalEditorconfig.set(
+        mapOf(
+            "max_line_length" to "120",
+            "ij_kotlin_allow_trailing_comma" to "true",
+            "ij_kotlin_allow_trailing_comma_on_call_site" to "true"
+        )
+    )
+    
+    // Configure reporters
+    reporters {
+        reporter(org.jlleitschuh.gradle.ktlint.reporter.ReporterType.PLAIN)
+        reporter(org.jlleitschuh.gradle.ktlint.reporter.ReporterType.CHECKSTYLE)
+        reporter(org.jlleitschuh.gradle.ktlint.reporter.ReporterType.HTML)
+    }
+    
+    // Include generated sources in linting (Compose compiler, etc)
+    filter {
+        exclude("**/generated/**")
+        include("**/kotlin/**")
     }
 }
 
