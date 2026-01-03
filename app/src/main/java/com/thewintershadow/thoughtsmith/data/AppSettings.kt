@@ -19,6 +19,14 @@ package com.thewintershadow.thoughtsmith.data
  *                     This shapes the AI's personality and approach to conversations.
  * @property outputFormatInstructions Instructions for how the AI should format the
  *                                    generated journal entries. Controls structure and style.
+ * @property ttsProvider The Text-to-Speech provider to use (Local, OpenAI, Anthropic, or AWS Polly).
+ *                       Defaults to LOCAL for offline support.
+ * @property ttsProviderType The AI provider for TTS (OpenAI, Anthropic) - separate from text API provider.
+ * @property ttsModel The TTS model/voice to use (e.g., "tts-1", "tts-1-hd" for OpenAI, voice ID for AWS Polly).
+ * @property ttsApiKey The API key for TTS provider (separate from text API key).
+ * @property awsAccessKey AWS access key for AWS Polly TTS (required if using AWS_POLLY)
+ * @property awsSecretKey AWS secret key for AWS Polly TTS (required if using AWS_POLLY)
+ * @property awsRegion AWS region for AWS Polly TTS (e.g., "us-east-1")
  *
  * Usage Example:
  * ```kotlin
@@ -26,7 +34,8 @@ package com.thewintershadow.thoughtsmith.data
  *     aiProvider = AIProvider.ANTHROPIC,
  *     aiModel = "claude-3-5-sonnet-20241022",
  *     apiKey = "sk-ant-...",
- *     aiContext = "You are a mindful counselor helping with reflection."
+ *     aiContext = "You are a mindful counselor helping with reflection.",
+ *     ttsProvider = TTSProvider.REMOTE
  * )
  * ```
  *
@@ -43,4 +52,11 @@ data class AppSettings(
     val outputFormatInstructions: String =
         "Format the journal entry as a clean markdown document with a " +
             "title, date, and well-organized sections based on our conversation.",
+    val ttsProvider: TTSProvider = TTSProvider.LOCAL,
+    val ttsProviderType: AIProvider = AIProvider.OPENAI, // For OpenAI/Anthropic TTS
+    val ttsModel: String = "tts-1", // TTS model/voice
+    val ttsApiKey: String = "", // Separate API key for TTS
+    val awsAccessKey: String = "",
+    val awsSecretKey: String = "",
+    val awsRegion: String = "us-east-1",
 )

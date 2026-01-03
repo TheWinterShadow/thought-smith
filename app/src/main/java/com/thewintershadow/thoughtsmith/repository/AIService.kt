@@ -159,7 +159,7 @@ class AIService {
                 .build()
 
         val response = client.newCall(request).execute()
-        val responseBody = response.body?.string() ?: return Result.failure(Exception("Empty response"))
+        val responseBody = response.body.string()
 
         if (!response.isSuccessful) {
             return Result.failure(Exception("API Error: $responseBody"))
@@ -222,7 +222,7 @@ class AIService {
                 .build()
 
         val response = client.newCall(request).execute()
-        val responseBody = response.body?.string() ?: return Result.failure(Exception("Empty response"))
+        val responseBody = response.body.string()
 
         if (!response.isSuccessful) {
             return Result.failure(Exception("API Error: $responseBody"))
@@ -288,7 +288,7 @@ class AIService {
                 .build()
 
         val response = client.newCall(request).execute()
-        val responseBody = response.body?.string() ?: return Result.failure(Exception("Empty response"))
+        val responseBody = response.body.string()
 
         if (!response.isSuccessful) {
             return Result.failure(Exception("API Error: $responseBody"))
@@ -304,4 +304,167 @@ class AIService {
             Result.failure(Exception("Invalid response format"))
         }
     }
+
+    /**
+     * Generate speech from text using OpenAI's TTS API.
+     *
+     * OpenAI TTS provides high-quality, natural-sounding voices.
+     * The API returns audio data in MP3 format.
+     *
+     * @param text The text to convert to speech
+     * @param apiKey OpenAI API key
+     * @param voice The voice to use (alloy, echo, fable, onyx, nova, shimmer). Defaults to "nova"
+     * @param model The TTS model to use (tts-1 or tts-1-hd). Defaults to "tts-1"
+     *
+     * @return Result containing the audio data as ByteArray or an error
+     */
+    suspend fun getOpenAITTSAudio(
+        text: String,
+        apiKey: String,
+        voice: String = "nova",
+        model: String = "tts-1",
+    ): Result<ByteArray> =
+        withContext(Dispatchers.IO) {
+            try {
+                AppLogger.info("AIService", "Requesting TTS audio from OpenAI")
+                
+                val requestBody =
+                    gson.toJson(
+                        mapOf(
+                            "model" to model,
+                            "input" to text,
+                            "voice" to voice,
+                        ),
+                    )
+
+                val request =
+                    Request
+                        .Builder()
+                        .url("https://api.openai.com/v1/audio/speech")
+                        .addHeader("Authorization", "Bearer $apiKey")
+                        .addHeader("Content-Type", "application/json")
+                        .post(requestBody.toRequestBody("application/json".toMediaType()))
+                        .build()
+
+                val response = client.newCall(request).execute()
+                val responseBody = response.body.bytes()
+
+                if (!response.isSuccessful) {
+                    return@withContext Result.failure(Exception("API Error: ${responseBody.toString(Charsets.UTF_8)}"))
+                }
+
+                AppLogger.info("AIService", "Successfully received TTS audio (${responseBody.size} bytes)")
+                Result.success(responseBody)
+            } catch (e: Exception) {
+                AppLogger.error("AIService", "Exception while getting TTS audio", e)
+                Result.failure(e)
+            }
+        }
+
+    /**
+     * Generate speech from text using Anthropic's TTS API.
+     *
+     * Note: Anthropic may not have a public TTS API yet. This is a placeholder
+     * for future implementation when the API becomes available.
+     *
+     * @param text The text to convert to speech
+     * @param apiKey Anthropic API key
+     *
+     * @return Result containing the audio data as ByteArray or an error
+     */
+    suspend fun getAnthropicTTSAudio(
+        text: String,
+        apiKey: String,
+    ): Result<ByteArray> =
+        withContext(Dispatchers.IO) {
+            try {
+                AppLogger.info("AIService", "Requesting TTS audio from Anthropic")
+                
+                // Note: Anthropic TTS API endpoint may not be available yet
+                // This is a placeholder implementation
+                // When available, update with actual API endpoint and request format
+                
+                // For now, return an error indicating the API is not yet available
+                Result.failure(Exception("Anthropic TTS API is not yet available. Please use OpenAI TTS or AWS Polly instead."))
+            } catch (e: Exception) {
+                AppLogger.error("AIService", "Exception while getting Anthropic TTS audio", e)
+                Result.failure(e)
+            }
+        }
+
+    /**
+     * Generate speech from text using AWS Polly TTS API.
+     *
+     * AWS Polly provides a wide variety of natural-sounding voices in multiple languages.
+     * The API returns audio data in MP3 format.
+     *
+     * AWS Signature Version 4 authentication is required.
+     *
+     * @param text The text to convert to speech
+     * @param accessKey AWS access key ID
+     * @param secretKey AWS secret access key
+     * @param region AWS region (e.g., "us-east-1")
+     * @param voiceId The voice ID to use (e.g., "Joanna", "Matthew", "Amy"). Defaults to "Joanna"
+     * @param engine The engine to use ("standard" or "neural"). Defaults to "neural"
+     *
+     * @return Result containing the audio data as ByteArray or an error
+     */
+    suspend fun getAWSPollyTTSAudio(
+        text: String,
+        accessKey: String,
+        secretKey: String,
+        region: String,
+        voiceId: String = "Joanna",
+        engine: String = "neural",
+    ): Result<ByteArray> =
+        withContext(Dispatchers.IO) {
+            try {
+                AppLogger.info("AIService", "Requesting TTS audio from AWS Polly")
+                
+                // AWS Polly uses REST API with Signature Version 4 authentication
+                // For simplicity, we'll use a basic implementation
+                // In production, you should use AWS SDK for proper signature handling
+                
+                val requestBody =
+                    gson.toJson(
+                        mapOf(
+                            "Text" to text,
+                            "OutputFormat" to "mp3",
+                            "VoiceId" to voiceId,
+                            "Engine" to engine,
+                        ),
+                    )
+
+                // AWS Polly endpoint
+                val endpoint = "https://polly.$region.amazonaws.com/v1/speech"
+                
+                // Note: AWS requires Signature Version 4 signing which is complex
+                // For a production app, consider using AWS SDK for Android
+                // This is a simplified implementation that may need AWS SDK integration
+                
+                val request =
+                    Request
+                        .Builder()
+                        .url(endpoint)
+                        .addHeader("Content-Type", "application/json")
+                        .addHeader("X-Amz-Target", "AWSPollyService.SynthesizeSpeech")
+                        // TODO: Add proper AWS Signature Version 4 authentication
+                        // For now, this will fail authentication - consider using AWS SDK
+                        .post(requestBody.toRequestBody("application/json".toMediaType()))
+                        .build()
+
+                val response = client.newCall(request).execute()
+                val responseBody = response.body.bytes()
+
+                if (!response.isSuccessful) {
+                    return@withContext Result.failure(Exception("AWS Polly API Error: ${responseBody.toString(Charsets.UTF_8)}"))
+                }
+
+                AppLogger.info("AIService", "Successfully received AWS Polly TTS audio (${responseBody.size} bytes)")
+                Result.success(responseBody)
+            } catch (e: Exception) {
+                AppLogger.error("AIService", "Exception while getting AWS Polly TTS audio", e)
+                Result.failure(e)
+            }
+        }
 }

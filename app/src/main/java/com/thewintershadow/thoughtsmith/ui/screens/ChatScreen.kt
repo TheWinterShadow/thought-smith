@@ -11,10 +11,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeMute
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -143,20 +147,30 @@ fun ChatScreen(
                                 },
                         )
                     }
-                    IconButton(
-                        onClick = { viewModel.saveJournalEntry() },
-                        enabled = uiState.messages.isNotEmpty() && !uiState.isSaving && !uiState.isGeneratingSummary,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Done,
-                            contentDescription = "Save Journal Entry",
-                            tint =
-                                if (uiState.messages.isNotEmpty() && !uiState.isSaving) {
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
-                                },
-                        )
+                    Box {
+                        IconButton(
+                            onClick = { viewModel.saveJournalEntry() },
+                            enabled = uiState.messages.isNotEmpty() && !uiState.isSaving && !uiState.isGeneratingSummary,
+                        ) {
+                            if (uiState.isGeneratingSummary) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Done,
+                                    contentDescription = "Save Journal Entry",
+                                    tint =
+                                        if (uiState.messages.isNotEmpty() && !uiState.isSaving && !uiState.isGeneratingSummary) {
+                                            MaterialTheme.colorScheme.onPrimaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
+                                        },
+                                )
+                            }
+                        }
                     }
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(
@@ -201,16 +215,81 @@ fun ChatScreen(
                 }
             }
 
-            // Input field
-            MessageInputBar(
-                messageText = messageText,
-                onMessageTextChange = { messageText = it },
-                onSendClick = {
-                    viewModel.sendMessage(messageText)
-                    messageText = ""
-                },
-                enabled = !uiState.isLoading && messageText.isNotBlank(),
+            // Input/Output mode toggles
+            InputOutputModeToggles(
+                inputMode = uiState.inputMode,
+                outputMode = uiState.outputMode,
+                isListening = uiState.isListening,
+                isSpeaking = uiState.isSpeaking,
+                onToggleInputMode = { viewModel.toggleInputMode() },
+                onToggleOutputMode = { viewModel.toggleOutputMode() },
+                onStartListening = { viewModel.startListening() },
+                onStopListening = { viewModel.stopListening() },
+                onStopSpeaking = { viewModel.stopSpeaking() },
             )
+
+            // Input field (only show for text mode)
+            if (!uiState.inputMode) {
+                MessageInputBar(
+                    messageText = messageText,
+                    onMessageTextChange = { messageText = it },
+                    onSendClick = {
+                        viewModel.sendMessage(messageText)
+                        messageText = ""
+                    },
+                    enabled = !uiState.isLoading && messageText.isNotBlank(),
+                )
+            } else {
+                // Speech input button
+                SpeechInputBar(
+                    isListening = uiState.isListening,
+                    onStartListening = { viewModel.startListening() },
+                    onStopListening = { viewModel.stopListening() },
+                    enabled = !uiState.isLoading,
+                )
+            }
+        }
+
+        // Loading overlay when generating summary
+        if (uiState.isGeneratingSummary && uiState.formattedSummary == null) {
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Card(
+                    modifier = Modifier.padding(32.dp),
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        ),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(48.dp),
+                            strokeWidth = 4.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(
+                            "Generating Journal Entry...",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            "Formatting your conversation into a beautiful journal entry",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        )
+                    }
+                }
+            }
         }
 
         // Preview Dialog
@@ -413,7 +492,7 @@ fun MessageInputBar(
                         ),
             ) {
                 Icon(
-                    imageVector = Icons.Default.Send,
+                    imageVector = Icons.AutoMirrored.Filled.Send,
                     contentDescription = "Send",
                     tint =
                         if (enabled) {
@@ -423,6 +502,166 @@ fun MessageInputBar(
                         },
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun InputOutputModeToggles(
+    inputMode: Boolean,
+    outputMode: Boolean,
+    isListening: Boolean,
+    isSpeaking: Boolean,
+    onToggleInputMode: () -> Unit,
+    onToggleOutputMode: () -> Unit,
+    onStartListening: () -> Unit,
+    onStopListening: () -> Unit,
+    onStopSpeaking: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 2.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            // Input mode toggle
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Icon(
+                        imageVector = if (inputMode) Icons.Default.Mic else Icons.Default.Edit,
+                        contentDescription = if (inputMode) "Speech Input" else "Text Input",
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Column {
+                        Text(
+                            text = "Input Mode",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = if (inputMode) "Voice input" else "Text input",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                Switch(
+                    checked = inputMode,
+                    onCheckedChange = { onToggleInputMode() },
+                )
+            }
+
+            // Divider
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 4.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+            )
+
+            // Output mode toggle
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Icon(
+                        imageVector = if (outputMode) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeMute,
+                        contentDescription = if (outputMode) "Speech Output" else "Text Output",
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Column {
+                        Text(
+                            text = "Output Mode",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = if (outputMode) "Voice output" else "Text output",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                Switch(
+                    checked = outputMode,
+                    onCheckedChange = { onToggleOutputMode() },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SpeechInputBar(
+    isListening: Boolean,
+    onStartListening: () -> Unit,
+    onStopListening: () -> Unit,
+    enabled: Boolean,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 8.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(
+                onClick = if (isListening) onStopListening else onStartListening,
+                enabled = enabled,
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(32.dp))
+                    .background(
+                        if (isListening) {
+                            MaterialTheme.colorScheme.error
+                        } else if (enabled) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        },
+                    ),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Mic,
+                    contentDescription = if (isListening) "Stop Listening" else "Start Listening",
+                    tint = if (enabled) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    },
+                    modifier = Modifier.size(32.dp),
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = if (isListening) "Listening... Tap to stop" else "Tap to start speaking",
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
         }
     }
 }

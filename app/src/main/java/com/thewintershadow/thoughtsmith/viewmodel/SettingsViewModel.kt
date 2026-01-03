@@ -7,6 +7,7 @@ import com.thewintershadow.thoughtsmith.data.AIModel
 import com.thewintershadow.thoughtsmith.data.AIModels
 import com.thewintershadow.thoughtsmith.data.AIProvider
 import com.thewintershadow.thoughtsmith.data.AppSettings
+import com.thewintershadow.thoughtsmith.data.TTSProvider
 import com.thewintershadow.thoughtsmith.repository.SettingsRepository
 import com.thewintershadow.thoughtsmith.util.AppLogger
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -192,6 +193,104 @@ class SettingsViewModel(
             settingsRepository.updateSettings(_uiState.value.settings)
             AppLogger.info("SettingsViewModel", "Settings saved successfully")
             _uiState.value = _uiState.value.copy(isLoading = false, saveSuccess = true)
+        }
+    }
+
+    /**
+     * Update the TTS provider.
+     *
+     * @param provider The TTS provider to use
+     */
+    fun updateTTSProvider(provider: TTSProvider) {
+        AppLogger.info("SettingsViewModel", "Updating TTS provider to ${provider.displayName}")
+
+        viewModelScope.launch {
+            val updatedSettings = _uiState.value.settings.copy(ttsProvider = provider)
+            settingsRepository.updateSettings(updatedSettings)
+        }
+    }
+
+    /**
+     * Update the TTS provider type (for OpenAI/Anthropic TTS).
+     *
+     * @param provider The AI provider to use for TTS
+     */
+    fun updateTTSProviderType(provider: AIProvider) {
+        AppLogger.info("SettingsViewModel", "Updating TTS provider type to ${provider.displayName}")
+
+        viewModelScope.launch {
+            val updatedSettings = _uiState.value.settings.copy(ttsProviderType = provider)
+            settingsRepository.updateSettings(updatedSettings)
+        }
+    }
+
+    /**
+     * Update the TTS model/voice.
+     *
+     * @param model The TTS model or voice ID to use
+     */
+    fun updateTTSModel(model: String) {
+        AppLogger.info("SettingsViewModel", "Updating TTS model to $model")
+
+        viewModelScope.launch {
+            val updatedSettings = _uiState.value.settings.copy(ttsModel = model)
+            settingsRepository.updateSettings(updatedSettings)
+        }
+    }
+
+    /**
+     * Update the TTS API key (separate from text API key).
+     *
+     * @param apiKey The API key for TTS provider
+     */
+    fun updateTTSApiKey(apiKey: String) {
+        AppLogger.debug("SettingsViewModel", "TTS API key updated")
+
+        viewModelScope.launch {
+            val updatedSettings = _uiState.value.settings.copy(ttsApiKey = apiKey)
+            settingsRepository.updateSettings(updatedSettings)
+        }
+    }
+
+    /**
+     * Update AWS access key for AWS Polly TTS.
+     *
+     * @param accessKey The AWS access key ID
+     */
+    fun updateAWSAccessKey(accessKey: String) {
+        AppLogger.debug("SettingsViewModel", "AWS access key updated")
+
+        viewModelScope.launch {
+            val updatedSettings = _uiState.value.settings.copy(awsAccessKey = accessKey)
+            settingsRepository.updateSettings(updatedSettings)
+        }
+    }
+
+    /**
+     * Update AWS secret key for AWS Polly TTS.
+     *
+     * @param secretKey The AWS secret access key
+     */
+    fun updateAWSSecretKey(secretKey: String) {
+        AppLogger.debug("SettingsViewModel", "AWS secret key updated")
+
+        viewModelScope.launch {
+            val updatedSettings = _uiState.value.settings.copy(awsSecretKey = secretKey)
+            settingsRepository.updateSettings(updatedSettings)
+        }
+    }
+
+    /**
+     * Update AWS region for AWS Polly TTS.
+     *
+     * @param region The AWS region (e.g., "us-east-1")
+     */
+    fun updateAWSRegion(region: String) {
+        AppLogger.debug("SettingsViewModel", "AWS region updated to $region")
+
+        viewModelScope.launch {
+            val updatedSettings = _uiState.value.settings.copy(awsRegion = region)
+            settingsRepository.updateSettings(updatedSettings)
         }
     }
 

@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.thewintershadow.thoughtsmith.data.AIProvider
 import com.thewintershadow.thoughtsmith.data.AppSettings
+import com.thewintershadow.thoughtsmith.data.TTSProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -57,6 +58,13 @@ class SettingsRepository(
     private val apiKeyKey = stringPreferencesKey("api_key")
     private val aiContextKey = stringPreferencesKey("ai_context")
     private val outputFormatKey = stringPreferencesKey("output_format")
+    private val ttsProviderKey = stringPreferencesKey("tts_provider")
+    private val ttsProviderTypeKey = stringPreferencesKey("tts_provider_type")
+    private val ttsModelKey = stringPreferencesKey("tts_model")
+    private val ttsApiKeyKey = stringPreferencesKey("tts_api_key")
+    private val awsAccessKeyKey = stringPreferencesKey("aws_access_key")
+    private val awsSecretKeyKey = stringPreferencesKey("aws_secret_key")
+    private val awsRegionKey = stringPreferencesKey("aws_region")
 
     /**
      * Flow of current app settings.
@@ -88,6 +96,13 @@ class SettingsRepository(
                     preferences[outputFormatKey]
                         ?: "Format the journal entry as a clean markdown document with a title, date, " +
                         "and well-organized sections based on our conversation.",
+                ttsProvider = TTSProvider.valueOf(preferences[ttsProviderKey] ?: TTSProvider.LOCAL.name),
+                ttsProviderType = AIProvider.valueOf(preferences[ttsProviderTypeKey] ?: AIProvider.OPENAI.name),
+                ttsModel = preferences[ttsModelKey] ?: "tts-1",
+                ttsApiKey = preferences[ttsApiKeyKey] ?: "",
+                awsAccessKey = preferences[awsAccessKeyKey] ?: "",
+                awsSecretKey = preferences[awsSecretKeyKey] ?: "",
+                awsRegion = preferences[awsRegionKey] ?: "us-east-1",
             )
         }
 
@@ -108,6 +123,13 @@ class SettingsRepository(
             preferences[apiKeyKey] = settings.apiKey
             preferences[aiContextKey] = settings.aiContext
             preferences[outputFormatKey] = settings.outputFormatInstructions
+            preferences[ttsProviderKey] = settings.ttsProvider.name
+            preferences[ttsProviderTypeKey] = settings.ttsProviderType.name
+            preferences[ttsModelKey] = settings.ttsModel
+            preferences[ttsApiKeyKey] = settings.ttsApiKey
+            preferences[awsAccessKeyKey] = settings.awsAccessKey
+            preferences[awsSecretKeyKey] = settings.awsSecretKey
+            preferences[awsRegionKey] = settings.awsRegion
         }
     }
 }
