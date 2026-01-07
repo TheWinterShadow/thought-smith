@@ -119,6 +119,16 @@ class AIService {
      * OpenAI uses a messages array format with roles (system, user, assistant).
      * The API endpoint is `/v1/chat/completions` with Bearer token authentication.
      *
+     * Message Format:
+     * - System message: Defines AI behavior and personality
+     * - User messages: Questions and statements from the user
+     * - Assistant messages: Previous AI responses (for context)
+     *
+     * The temperature parameter (0.7) controls response creativity:
+     * - Lower values (0.0-0.3): More focused and deterministic
+     * - Medium values (0.4-0.7): Balanced creativity and consistency
+     * - Higher values (0.8-1.0): More creative and varied responses
+     *
      * @param messages Conversation history
      * @param model OpenAI model name (e.g., "gpt-4o", "gpt-3.5-turbo")
      * @param apiKey OpenAI API key
@@ -132,12 +142,15 @@ class AIService {
         apiKey: String,
         systemContext: String,
     ): Result<String> {
+        // Build request body with system context first, then conversation messages
         val requestBody =
             gson.toJson(
                 mapOf(
                     "model" to model,
                     "messages" to (
+                        // System message defines AI behavior
                         listOf(mapOf("role" to "system", "content" to systemContext)) +
+                            // Convert app messages to OpenAI format
                             messages.map {
                                 mapOf(
                                     "role" to (if (it.isUser) "user" else "assistant"),
@@ -145,10 +158,12 @@ class AIService {
                                 )
                             }
                     ),
+                    // Temperature controls creativity (0.0-1.0)
                     "temperature" to 0.7,
                 ),
             )
 
+        // Build HTTP request with Bearer token authentication
         val request =
             Request
                 .Builder()
@@ -158,13 +173,16 @@ class AIService {
                 .post(requestBody.toRequestBody("application/json".toMediaType()))
                 .build()
 
+        // Execute request synchronously (called from IO dispatcher)
         val response = client.newCall(request).execute()
         val responseBody = response.body.string()
 
+        // Check for HTTP errors
         if (!response.isSuccessful) {
             return Result.failure(Exception("API Error: $responseBody"))
         }
 
+        // Parse JSON response to extract AI's message
         val jsonResponse = gson.fromJson(responseBody, Map::class.java)
         val choices = jsonResponse["choices"] as? List<*>
         val message = (choices?.firstOrNull() as? Map<*, *>)?.get("message") as? Map<*, *>
@@ -184,6 +202,14 @@ class AIService {
      * The API endpoint includes the model name and requires an API key as a query parameter.
      * System instructions are provided separately from the conversation content.
      *
+     * Message Structure:
+     * - Each message has a "role" (user or model) and "parts" array
+     * - Parts contain the actual text content
+     * - System instructions are passed separately via systemInstruction field
+     *
+     * Authentication:
+     * Unlike OpenAI's Bearer token, Gemini uses API key as URL query parameter
+     *
      * @param messages Conversation history
      * @param model Gemini model name (e.g., "gemini-1.5-pro", "gemini-1.5-flash")
      * @param apiKey Google API key
@@ -197,6 +223,7 @@ class AIService {
         apiKey: String,
         systemContext: String,
     ): Result<String> {
+        // Convert messages to Gemini's parts-based format
         val contents =
             messages.map {
                 mapOf(
@@ -205,14 +232,17 @@ class AIService {
                 )
             }
 
+        // Build request with separate system instruction
         val requestBody =
             gson.toJson(
                 mapOf(
                     "contents" to contents,
+                    // System instructions are separate from message content
                     "systemInstruction" to mapOf("parts" to listOf(mapOf("text" to systemContext))),
                 ),
             )
 
+        // API key is passed as query parameter, not header
         val request =
             Request
                 .Builder()
@@ -228,6 +258,7 @@ class AIService {
             return Result.failure(Exception("API Error: $responseBody"))
         }
 
+        // Parse nested response structure: candidates -> content -> parts -> text
         val jsonResponse = gson.fromJson(responseBody, Map::class.java)
         val candidates = jsonResponse["candidates"] as? List<*>
         val content = (candidates?.firstOrNull() as? Map<*, *>)?.get("content") as? Map<*, *>
@@ -248,6 +279,18 @@ class AIService {
      * a separate system parameter for context. Authentication uses a custom x-api-key header
      * and requires an API version header.
      *
+     * Key Differences from Other Providers:
+     * - Custom authentication header: x-api-key (not Authorization)
+     * - API version header required: anthropic-version
+     * - max_tokens parameter required (not optional like OpenAI)
+     * - System context as top-level "system" field
+     *
+     * Claude Models are known for:
+     * - Thoughtful, nuanced responses
+     * - Strong reasoning capabilities
+     * - Long context windows
+     * - Constitutional AI training for safety
+     *
      * @param messages Conversation history
      * @param model Claude model name (e.g., "claude-3-5-sonnet", "claude-3-haiku")
      * @param apiKey Anthropic API key
@@ -261,12 +304,16 @@ class AIService {
         apiKey: String,
         systemContext: String,
     ): Result<String> {
+        // Build request with required max_tokens parameter
         val requestBody =
             gson.toJson(
                 mapOf(
                     "model" to model,
+                    // Claude requires explicit max_tokens (OpenAI has defaults)
                     "max_tokens" to 4096,
+                    // System context is a top-level field, not a message
                     "system" to systemContext,
+                    // Messages use "user" and "assistant" roles
                     "messages" to
                         messages.map {
                             mapOf(
@@ -277,11 +324,13 @@ class AIService {
                 ),
             )
 
+        // Use custom x-api-key header for authentication
         val request =
             Request
                 .Builder()
                 .url("https://api.anthropic.com/v1/messages")
                 .addHeader("x-api-key", apiKey)
+                // API version header is required for Anthropic
                 .addHeader("anthropic-version", "2023-06-01")
                 .addHeader("Content-Type", "application/json")
                 .post(requestBody.toRequestBody("application/json".toMediaType()))
@@ -294,6 +343,7 @@ class AIService {
             return Result.failure(Exception("API Error: $responseBody"))
         }
 
+        // Parse Claude's simpler response format: content array -> text
         val jsonResponse = gson.fromJson(responseBody, Map::class.java)
         val content = jsonResponse["content"] as? List<*>
         val text = (content?.firstOrNull() as? Map<*, *>)?.get("text") as? String
@@ -327,7 +377,7 @@ class AIService {
         withContext(Dispatchers.IO) {
             try {
                 AppLogger.info("AIService", "Requesting TTS audio from OpenAI")
-                
+
                 val requestBody =
                     gson.toJson(
                         mapOf(
@@ -379,13 +429,17 @@ class AIService {
         withContext(Dispatchers.IO) {
             try {
                 AppLogger.info("AIService", "Requesting TTS audio from Anthropic")
-                
+
                 // Note: Anthropic TTS API endpoint may not be available yet
                 // This is a placeholder implementation
                 // When available, update with actual API endpoint and request format
-                
+
                 // For now, return an error indicating the API is not yet available
-                Result.failure(Exception("Anthropic TTS API is not yet available. Please use OpenAI TTS or AWS Polly instead."))
+                Result.failure(
+                    Exception(
+                        "Anthropic TTS API is not yet available. Please use OpenAI TTS or AWS Polly instead.",
+                    ),
+                )
             } catch (e: Exception) {
                 AppLogger.error("AIService", "Exception while getting Anthropic TTS audio", e)
                 Result.failure(e)
@@ -420,11 +474,11 @@ class AIService {
         withContext(Dispatchers.IO) {
             try {
                 AppLogger.info("AIService", "Requesting TTS audio from AWS Polly")
-                
+
                 // AWS Polly uses REST API with Signature Version 4 authentication
                 // For simplicity, we'll use a basic implementation
                 // In production, you should use AWS SDK for proper signature handling
-                
+
                 val requestBody =
                     gson.toJson(
                         mapOf(
@@ -437,11 +491,11 @@ class AIService {
 
                 // AWS Polly endpoint
                 val endpoint = "https://polly.$region.amazonaws.com/v1/speech"
-                
+
                 // Note: AWS requires Signature Version 4 signing which is complex
                 // For a production app, consider using AWS SDK for Android
                 // This is a simplified implementation that may need AWS SDK integration
-                
+
                 val request =
                     Request
                         .Builder()
@@ -457,10 +511,17 @@ class AIService {
                 val responseBody = response.body.bytes()
 
                 if (!response.isSuccessful) {
-                    return@withContext Result.failure(Exception("AWS Polly API Error: ${responseBody.toString(Charsets.UTF_8)}"))
+                    return@withContext Result.failure(
+                        Exception(
+                            "AWS Polly API Error: ${responseBody.toString(Charsets.UTF_8)}",
+                        ),
+                    )
                 }
 
-                AppLogger.info("AIService", "Successfully received AWS Polly TTS audio (${responseBody.size} bytes)")
+                AppLogger.info(
+                    "AIService",
+                    "Successfully received AWS Polly TTS audio (${responseBody.size} bytes)",
+                )
                 Result.success(responseBody)
             } catch (e: Exception) {
                 AppLogger.error("AIService", "Exception while getting AWS Polly TTS audio", e)

@@ -13,8 +13,8 @@ import com.thewintershadow.thoughtsmith.util.SpeechService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -234,6 +234,16 @@ class ChatViewModel(
      * This function takes the entire conversation history and asks the AI to format
      * it as a structured journal entry according to user-configured formatting instructions.
      * The result can then be saved to a file.
+     *
+     * Process:
+     * 1. Validates there are messages and no operation is in progress
+     * 2. Retrieves current settings (API key, model, format instructions)
+     * 3. Combines conversation into a single text block
+     * 4. Sends formatting request to AI with output instructions
+     * 5. Receives formatted journal entry ready for saving
+     *
+     * The AI uses the output format instructions from settings to structure
+     * the entry according to user preferences (e.g., markdown, specific sections).
      */
     fun saveJournalEntry() {
         // Prevent duplicate operations
@@ -262,12 +272,13 @@ class ChatViewModel(
                     return@launch
                 }
 
-                // Create a formatting request message with conversation history
+                // Combine all messages into a readable conversation format
                 val conversationText =
                     _uiState.value.messages.joinToString("\n\n") {
                         "${if (it.isUser) "You" else "AI"}: ${it.content}"
                     }
 
+                // Create formatting request with instructions and conversation
                 val formatMessage =
                     Message(
                         content =
@@ -406,7 +417,7 @@ class ChatViewModel(
         val newMode = !_uiState.value.inputMode
         _uiState.value = _uiState.value.copy(inputMode = newMode)
         AppLogger.info("ChatViewModel", "Input mode changed to: ${if (newMode) "speech" else "text"}")
-        
+
         // Stop listening if switching to text mode
         if (!newMode) {
             stopListening()
@@ -420,7 +431,7 @@ class ChatViewModel(
         val newMode = !_uiState.value.outputMode
         _uiState.value = _uiState.value.copy(outputMode = newMode)
         AppLogger.info("ChatViewModel", "Output mode changed to: ${if (newMode) "speech" else "text"}")
-        
+
         // Stop speaking if switching to text mode
         if (!newMode) {
             stopSpeaking()
@@ -436,9 +447,10 @@ class ChatViewModel(
         }
 
         if (!speechService.isSpeechRecognitionAvailable()) {
-            _uiState.value = _uiState.value.copy(
-                error = "Speech recognition is not available on this device"
-            )
+            _uiState.value =
+                _uiState.value.copy(
+                    error = "Speech recognition is not available on this device",
+                )
             return
         }
 
@@ -446,15 +458,16 @@ class ChatViewModel(
         _uiState.value = _uiState.value.copy(isListening = true, error = null)
 
         viewModelScope.launch {
-            speechService.startListening()
+            speechService
+                .startListening()
                 .catch { e ->
                     AppLogger.error("ChatViewModel", "Speech recognition error", e)
-                    _uiState.value = _uiState.value.copy(
-                        isListening = false,
-                        error = e.message ?: "Speech recognition failed"
-                    )
-                }
-                .collect { result ->
+                    _uiState.value =
+                        _uiState.value.copy(
+                            isListening = false,
+                            error = e.message ?: "Speech recognition failed",
+                        )
+                }.collect { result ->
                     // Keep listening active - don't set isListening = false here
                     // Only stop when the flow completes (which happens when stopListening is called)
                     if (result.isSuccess) {
@@ -466,12 +479,15 @@ class ChatViewModel(
                     } else {
                         // Only show error for fatal errors (non-fatal ones are handled internally)
                         val error = result.exceptionOrNull()
-                        if (error != null && error.message?.contains("Fatal", ignoreCase = true) == true) {
+                        if (error != null &&
+                            error.message?.contains("Fatal", ignoreCase = true) == true
+                        ) {
                             AppLogger.error("ChatViewModel", "Fatal speech recognition error", error)
-                            _uiState.value = _uiState.value.copy(
-                                isListening = false,
-                                error = error.message ?: "Speech recognition failed"
-                            )
+                            _uiState.value =
+                                _uiState.value.copy(
+                                    isListening = false,
+                                    error = error.message ?: "Speech recognition failed",
+                                )
                         }
                     }
                 }
@@ -512,12 +528,12 @@ class ChatViewModel(
         awsRegion: String = "us-east-1",
     ) {
         if (text.isBlank()) return
-        
+
         _uiState.value = _uiState.value.copy(isSpeaking = true)
-        
+
         viewModelScope.launch {
             speechService.speak(text, ttsApiKey, ttsProviderType, ttsModel, awsAccessKey, awsSecretKey, awsRegion)
-            
+
             // Check if speaking is done (polling approach)
             // Wait a bit and check if still speaking
             kotlinx.coroutines.delay(100)

@@ -1,3 +1,11 @@
+/**
+ * Text-to-Speech provider definitions for voice output configuration.
+ *
+ * This file defines the available TTS options for reading AI responses aloud.
+ *
+ * @author TheWinterShadow
+ * @since 1.0.0
+ */
 package com.thewintershadow.thoughtsmith.data
 
 /**
@@ -10,11 +18,15 @@ package com.thewintershadow.thoughtsmith.data
  * - AWS_POLLY: Uses Amazon Polly TTS service
  *
  * @property displayName User-friendly name for the provider
+ *
+ * @author TheWinterShadow
+ * @since 1.0.0
  */
-enum class TTSProvider(val displayName: String) {
+enum class TTSProvider(
+    val displayName: String,
+) {
     LOCAL("Local (Device)"),
     OPENAI("OpenAI TTS"),
     ANTHROPIC("Anthropic TTS"),
     AWS_POLLY("AWS Polly"),
 }
-

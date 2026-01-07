@@ -1,3 +1,12 @@
+/**
+ * Settings screen composables for app configuration.
+ *
+ * This file contains all UI components for the settings screen, organized into
+ * tabbed sections for Context, Text API, and Speech configuration.
+ *
+ * @author TheWinterShadow
+ * @since 1.0.0
+ */
 package com.thewintershadow.thoughtsmith.ui.screens
 
 import androidx.compose.foundation.layout.*
@@ -20,6 +29,38 @@ import com.thewintershadow.thoughtsmith.data.TTSProvider
 import com.thewintershadow.thoughtsmith.viewmodel.SettingsViewModel
 import com.thewintershadow.thoughtsmith.viewmodel.ViewModelFactory
 
+/**
+ * Settings screen composable for configuring the Thought Smith app.
+ *
+ * This screen provides a comprehensive interface for customizing all aspects
+ * of the app's behavior, organized into three tabs:
+ *
+ * 1. Context Tab:
+ *    - AI Context: Define the AI's personality and behavior
+ *    - Output Format Instructions: Control journal entry formatting
+ *
+ * 2. Text API Tab:
+ *    - AI Provider Selection: Choose between OpenAI, Gemini, or Anthropic
+ *    - Model Selection: Pick specific AI model for the chosen provider
+ *    - API Key Configuration: Enter authentication credentials
+ *
+ * 3. Speech Tab:
+ *    - TTS Provider: Choose between Local, OpenAI, Anthropic, or AWS Polly
+ *    - TTS Configuration: Set up voice model and credentials
+ *    - AWS Polly Settings: Configure AWS credentials if using Polly
+ *
+ * Navigation:
+ * - Back button returns to chat screen
+ * - Bottom bar provides quick access to logs screen
+ * - All settings auto-save on change
+ *
+ * @param onNavigateBack Callback to navigate back to the previous screen
+ * @param onNavigateToLogs Callback to navigate to the logs screen
+ * @param viewModel The SettingsViewModel managing settings state
+ *
+ * @author TheWinterShadow
+ * @since 1.0.0
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -131,6 +172,30 @@ fun SettingsScreen(
     }
 }
 
+/**
+ * Context and format instructions tab composable.
+ *
+ * This tab allows users to customize how the AI behaves and formats output:
+ *
+ * AI Context Section:
+ * - Multi-line text field for defining AI personality
+ * - System prompt that shapes conversation style
+ * - Default encourages supportive, empathetic responses
+ *
+ * Output Format Section:
+ * - Instructions for journal entry generation
+ * - Controls structure and style of saved entries
+ * - Default creates clean markdown with organized sections
+ *
+ * Both sections include helpful descriptions and save automatically
+ * when edited. Settings persist across app sessions.
+ *
+ * @param uiState Current settings UI state from ViewModel
+ * @param viewModel The SettingsViewModel for updating settings
+ *
+ * @author TheWinterShadow
+ * @since 1.0.0
+ */
 @Composable
 fun ContextInfoTab(
     uiState: com.thewintershadow.thoughtsmith.viewmodel.SettingsUiState,
@@ -284,6 +349,34 @@ fun ContextInfoTab(
     }
 }
 
+/**
+ * Text AI API configuration tab composable.
+ *
+ * This tab manages all settings related to the text-based AI service:
+ *
+ * Provider Selection:
+ * - Radio buttons for OpenAI, Google Gemini, or Anthropic Claude
+ * - Automatically updates available models when provider changes
+ * - Each provider has different capabilities and pricing
+ *
+ * Model Selection:
+ * - Shows all models available for selected provider
+ * - Displays both technical name and user-friendly label
+ * - Includes latest models like GPT-4o, Claude 4.5, Gemini 1.5 Pro
+ *
+ * API Key Entry:
+ * - Secure text field for provider credentials
+ * - Required before app can make API requests
+ * - Keys stored locally and never logged
+ *
+ * All changes save automatically and take effect immediately.
+ *
+ * @param uiState Current settings UI state from ViewModel
+ * @param viewModel The SettingsViewModel for updating settings
+ *
+ * @author TheWinterShadow
+ * @since 1.0.0
+ */
 @Composable
 fun TextAPITab(
     uiState: com.thewintershadow.thoughtsmith.viewmodel.SettingsUiState,
@@ -474,6 +567,42 @@ fun TextAPITab(
     }
 }
 
+/**
+ * Speech (Text-to-Speech) configuration tab composable.
+ *
+ * This tab configures voice output options for reading AI responses aloud:
+ *
+ * TTS Provider Options:
+ * 1. Local (Device):
+ *    - Uses Android's built-in TTS engine
+ *    - Free and works offline
+ *    - Voice quality depends on device
+ *
+ * 2. OpenAI TTS:
+ *    - High-quality, natural-sounding voices
+ *    - Requires API key (separate from text API)
+ *    - Models: tts-1 (fast) or tts-1-hd (high quality)
+ *    - Multiple voice options (alloy, echo, fable, nova, etc.)
+ *
+ * 3. Anthropic TTS:
+ *    - Placeholder for future Anthropic TTS API
+ *    - Not yet publicly available
+ *    - Configuration ready for when API launches
+ *
+ * 4. AWS Polly:
+ *    - Wide variety of voices and languages
+ *    - Requires AWS credentials (access key, secret key, region)
+ *    - Both standard and neural engine options
+ *
+ * Configuration varies by provider with appropriate fields shown
+ * based on selection. All settings save automatically.
+ *
+ * @param uiState Current settings UI state from ViewModel
+ * @param viewModel The SettingsViewModel for updating settings
+ *
+ * @author TheWinterShadow
+ * @since 1.0.0
+ */
 @Composable
 fun SpeechTab(
     uiState: com.thewintershadow.thoughtsmith.viewmodel.SettingsUiState,
@@ -643,7 +772,17 @@ fun SpeechTab(
                                         onValueChange = { viewModel.updateTTSModel(it) },
                                         modifier = Modifier.fillMaxWidth(),
                                         label = { Text("Model/Voice ID") },
-                                        placeholder = { Text(if (uiState.settings.ttsProviderType == AIProvider.OPENAI) "e.g., tts-1 or tts-1-hd" else "Enter model name") },
+                                        placeholder = {
+                                            Text(
+                                                if (uiState.settings.ttsProviderType ==
+                                                    AIProvider.OPENAI
+                                                ) {
+                                                    "e.g., tts-1 or tts-1-hd"
+                                                } else {
+                                                    "Enter model name"
+                                                },
+                                            )
+                                        },
                                         singleLine = true,
                                         shape = RoundedCornerShape(8.dp),
                                         colors =
@@ -708,7 +847,7 @@ fun SpeechTab(
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.primary,
                             )
-                            
+
                             OutlinedTextField(
                                 value = uiState.settings.awsAccessKey,
                                 onValueChange = { viewModel.updateAWSAccessKey(it) },
@@ -722,7 +861,7 @@ fun SpeechTab(
                                         unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                                     ),
                             )
-                            
+
                             OutlinedTextField(
                                 value = uiState.settings.awsSecretKey,
                                 onValueChange = { viewModel.updateAWSSecretKey(it) },
@@ -736,7 +875,7 @@ fun SpeechTab(
                                         unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                                     ),
                             )
-                            
+
                             OutlinedTextField(
                                 value = uiState.settings.awsRegion,
                                 onValueChange = { viewModel.updateAWSRegion(it) },

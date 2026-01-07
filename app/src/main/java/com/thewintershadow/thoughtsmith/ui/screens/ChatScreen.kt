@@ -1,3 +1,12 @@
+/**
+ * Chat screen composables for the main conversational journaling interface.
+ *
+ * This file contains all UI components for the chat screen including the main
+ * screen, message bubbles, input controls, speech controls, and dialogs.
+ *
+ * @author TheWinterShadow
+ * @since 1.0.0
+ */
 package com.thewintershadow.thoughtsmith.ui.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -12,13 +21,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.automirrored.filled.VolumeMute
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,6 +49,40 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/**
+ * Main chat screen composable for the Thought Smith app.
+ *
+ * This is the primary interface where users interact with the AI assistant for journaling.
+ * The screen manages the conversation flow, displays messages in a chat interface,
+ * and provides controls for sending messages, toggling speech modes, and saving journal entries.
+ *
+ * Key Features:
+ * - Real-time chat interface with user and AI messages
+ * - Text and speech input modes (toggle between typing and voice)
+ * - Text and speech output modes (read messages aloud)
+ * - Auto-scrolling to latest messages
+ * - Journal entry generation and preview
+ * - File picker integration for saving journal entries
+ * - Error and success notifications via Snackbar
+ * - Clear chat functionality
+ *
+ * State Management:
+ * The screen observes UI state from ChatViewModel using Kotlin Flow, providing
+ * reactive updates for messages, loading states, errors, and mode toggles.
+ *
+ * User Flow:
+ * 1. User sends messages via text input or voice
+ * 2. AI responds with thoughtful questions and reflections
+ * 3. Conversation continues with context maintained
+ * 4. User can save conversation as formatted journal entry
+ * 5. Preview generated entry and save to chosen location
+ *
+ * @param onNavigateToSettings Callback to navigate to settings screen
+ * @param viewModel The ChatViewModel managing the chat state and logic
+ *
+ * @author TheWinterShadow
+ * @since 1.0.0
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
@@ -150,7 +193,10 @@ fun ChatScreen(
                     Box {
                         IconButton(
                             onClick = { viewModel.saveJournalEntry() },
-                            enabled = uiState.messages.isNotEmpty() && !uiState.isSaving && !uiState.isGeneratingSummary,
+                            enabled =
+                                uiState.messages.isNotEmpty() &&
+                                    !uiState.isSaving &&
+                                    !uiState.isGeneratingSummary,
                         ) {
                             if (uiState.isGeneratingSummary) {
                                 CircularProgressIndicator(
@@ -163,10 +209,15 @@ fun ChatScreen(
                                     imageVector = Icons.Default.Done,
                                     contentDescription = "Save Journal Entry",
                                     tint =
-                                        if (uiState.messages.isNotEmpty() && !uiState.isSaving && !uiState.isGeneratingSummary) {
+                                        if (uiState.messages.isNotEmpty() &&
+                                            !uiState.isSaving &&
+                                            !uiState.isGeneratingSummary
+                                        ) {
                                             MaterialTheme.colorScheme.onPrimaryContainer
                                         } else {
-                                            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
+                                            MaterialTheme.colorScheme
+                                                .onPrimaryContainer
+                                                .copy(alpha = 0.5f)
                                         },
                                 )
                             }
@@ -308,6 +359,27 @@ fun ChatScreen(
     }
 }
 
+/**
+ * Dialog for previewing and confirming the generated journal entry.
+ *
+ * This composable displays the AI-generated journal entry in a scrollable dialog,
+ * allowing users to review the formatted content before saving it to a file.
+ * Users can accept the entry (proceed to save) or reject it (return to chat).
+ *
+ * Features:
+ * - Scrollable content area for long journal entries
+ * - Loading indicator while generating
+ * - Accept button to proceed with saving
+ * - Cancel button to dismiss and return to editing
+ *
+ * @param formattedContent The AI-generated journal entry content to preview
+ * @param isGenerating True if the content is still being generated
+ * @param onAccept Callback when user accepts the journal entry
+ * @param onReject Callback when user rejects/cancels the preview
+ *
+ * @author TheWinterShadow
+ * @since 1.0.0
+ */
 @Composable
 fun SummaryPreviewDialog(
     formattedContent: String,
@@ -378,6 +450,25 @@ fun SummaryPreviewDialog(
     )
 }
 
+/**
+ * Composable that displays a single message bubble in the chat interface.
+ *
+ * This component renders messages differently based on whether they're from
+ * the user or the AI assistant:
+ * - User messages: Right-aligned, primary color background
+ * - AI messages: Left-aligned, surface variant background
+ *
+ * Design Features:
+ * - Rounded corners for friendly appearance
+ * - Maximum width constraint to maintain readability
+ * - Appropriate text color contrast based on background
+ * - Comfortable padding for touch targets
+ *
+ * @param message The Message object containing content, sender, and timestamp
+ *
+ * @author TheWinterShadow
+ * @since 1.0.0
+ */
 @Composable
 fun MessageBubble(message: Message) {
     Row(
@@ -418,6 +509,16 @@ fun MessageBubble(message: Message) {
     }
 }
 
+/**
+ * Loading indicator displayed while waiting for AI response.
+ *
+ * Shows a small circular progress indicator in a message bubble-style container
+ * aligned to the left side (where AI messages appear). This provides visual
+ * feedback that the AI is processing and will respond soon.
+ *
+ * @author TheWinterShadow
+ * @since 1.0.0
+ */
 @Composable
 fun LoadingIndicator() {
     Row(
@@ -440,6 +541,27 @@ fun LoadingIndicator() {
     }
 }
 
+/**
+ * Text input bar for typing messages.
+ *
+ * This composable provides a text field for typing messages along with a send button.
+ * The input field expands to accommodate multiple lines and includes placeholder text.
+ *
+ * Features:
+ * - Multi-line text input (up to 4 lines)
+ * - Rounded corners for modern appearance
+ * - Send button that's only enabled when there's text to send
+ * - Visual feedback for enabled/disabled state
+ * - Elevated surface to separate from content
+ *
+ * @param messageText Current text in the input field
+ * @param onMessageTextChange Callback when text changes
+ * @param onSendClick Callback when send button is clicked
+ * @param enabled Whether the send button should be enabled
+ *
+ * @author TheWinterShadow
+ * @since 1.0.0
+ */
 @Composable
 fun MessageInputBar(
     messageText: String,
@@ -506,6 +628,36 @@ fun MessageInputBar(
     }
 }
 
+/**
+ * Toggle controls for switching between input and output modes.
+ *
+ * This component provides two switches that control:
+ * 1. Input Mode: Text typing vs. Voice speech recognition
+ * 2. Output Mode: Text display vs. Voice text-to-speech
+ *
+ * Each mode has:
+ * - Clear icon indicating the current mode
+ * - Label and description text
+ * - Switch control for toggling
+ *
+ * Visual Design:
+ * - Organized in two rows separated by a divider
+ * - Icons and labels for quick comprehension
+ * - Primary color accents for active states
+ *
+ * @param inputMode True for speech input, false for text input
+ * @param outputMode True for speech output, false for text output
+ * @param isListening True when actively listening for speech
+ * @param isSpeaking True when text-to-speech is active
+ * @param onToggleInputMode Callback to toggle input mode
+ * @param onToggleOutputMode Callback to toggle output mode
+ * @param onStartListening Callback to start listening (unused but kept for future enhancement)
+ * @param onStopListening Callback to stop listening (unused but kept for future enhancement)
+ * @param onStopSpeaking Callback to stop speaking (unused but kept for future enhancement)
+ *
+ * @author TheWinterShadow
+ * @since 1.0.0
+ */
 @Composable
 fun InputOutputModeToggles(
     inputMode: Boolean,
@@ -524,9 +676,10 @@ fun InputOutputModeToggles(
         shadowElevation = 2.dp,
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // Input mode toggle
@@ -582,7 +735,12 @@ fun InputOutputModeToggles(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Icon(
-                        imageVector = if (outputMode) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeMute,
+                        imageVector =
+                            if (outputMode) {
+                                Icons.AutoMirrored.Filled.VolumeUp
+                            } else {
+                                Icons.AutoMirrored.Filled.VolumeMute
+                            },
                         contentDescription = if (outputMode) "Speech Output" else "Text Output",
                         modifier = Modifier.size(20.dp),
                         tint = MaterialTheme.colorScheme.primary,
@@ -610,6 +768,29 @@ fun InputOutputModeToggles(
     }
 }
 
+/**
+ * Speech input control with large microphone button.
+ *
+ * This composable provides a prominent microphone button for voice input,
+ * replacing the text input bar when speech mode is active. The button changes
+ * appearance based on whether the app is actively listening.
+ *
+ * Visual States:
+ * - Not listening: Large blue button with "Tap to start speaking" label
+ * - Listening: Large red button with "Listening... Tap to stop" label
+ * - Disabled: Gray button with reduced opacity
+ *
+ * The button is intentionally large (64dp) for easy tapping and clear
+ * visual prominence, making it obvious when voice input is active.
+ *
+ * @param isListening True when actively listening for speech
+ * @param onStartListening Callback to start speech recognition
+ * @param onStopListening Callback to stop speech recognition
+ * @param enabled Whether the button should be enabled
+ *
+ * @author TheWinterShadow
+ * @since 1.0.0
+ */
 @Composable
 fun SpeechInputBar(
     isListening: Boolean,
@@ -623,36 +804,39 @@ fun SpeechInputBar(
         shadowElevation = 8.dp,
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(
                 onClick = if (isListening) onStopListening else onStartListening,
                 enabled = enabled,
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(RoundedCornerShape(32.dp))
-                    .background(
-                        if (isListening) {
-                            MaterialTheme.colorScheme.error
-                        } else if (enabled) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        },
-                    ),
+                modifier =
+                    Modifier
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(32.dp))
+                        .background(
+                            if (isListening) {
+                                MaterialTheme.colorScheme.error
+                            } else if (enabled) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            },
+                        ),
             ) {
                 Icon(
                     imageVector = Icons.Default.Mic,
                     contentDescription = if (isListening) "Stop Listening" else "Start Listening",
-                    tint = if (enabled) {
-                        MaterialTheme.colorScheme.onPrimary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    },
+                    tint =
+                        if (enabled) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        },
                     modifier = Modifier.size(32.dp),
                 )
             }

@@ -228,22 +228,22 @@ dependencies {
  */
 tasks.dokkaHtml {
     outputDirectory.set(file("${layout.buildDirectory.get()}/dokka/html"))
-    
+
     // Configure Dokka module
     moduleName.set("Thought Smith")
-    
+
     // Include Android sources
     dokkaSourceSets {
         configureEach {
             // Include all source files
             includeNonPublic.set(false)
-            
+
             // Display name for the source set
             displayName.set("Thought Smith")
-            
+
             // Report undocumented code
             reportUndocumented.set(true)
-            
+
             // Skip empty packages
             skipEmptyPackages.set(true)
         }
@@ -252,7 +252,7 @@ tasks.dokkaHtml {
 
 tasks.dokkaJavadoc {
     outputDirectory.set(file("${layout.buildDirectory.get()}/dokka/javadoc"))
-    
+
     dokkaSourceSets {
         configureEach {
             includeNonPublic.set(false)
@@ -264,7 +264,7 @@ tasks.dokkaJavadoc {
 
 tasks.dokkaGfm {
     outputDirectory.set(file("${layout.buildDirectory.get()}/dokka/gfm"))
-    
+
     dokkaSourceSets {
         configureEach {
             includeNonPublic.set(false)

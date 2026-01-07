@@ -1,3 +1,12 @@
+/**
+ * Logs screen for viewing application debug and event information.
+ *
+ * This file contains the UI for displaying in-memory application logs,
+ * helping with debugging, user support, and understanding app behavior.
+ *
+ * @author TheWinterShadow
+ * @since 1.0.0
+ */
 package com.thewintershadow.thoughtsmith.ui.screens
 
 import androidx.compose.foundation.layout.*
@@ -17,6 +26,29 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.thewintershadow.thoughtsmith.util.AppLogger
 
+/**
+ * Composable screen for displaying application logs.
+ *
+ * This screen provides a debug and monitoring interface that shows all logged events
+ * from the application. It's useful for troubleshooting issues, understanding app behavior,
+ * and providing support information.
+ *
+ * Features:
+ * - Real-time log updates (refreshes every 500ms)
+ * - Color-coded log levels (DEBUG, INFO, WARNING, ERROR)
+ * - Clear logs functionality
+ * - Reverse chronological order (newest first)
+ * - Scrollable list of log entries
+ * - Formatted timestamps and metadata
+ *
+ * The logs are stored in memory by AppLogger and are limited to the most recent
+ * 1000 entries to prevent memory issues.
+ *
+ * @param onNavigateBack Callback invoked when the user navigates back from this screen
+ *
+ * @author TheWinterShadow
+ * @since 1.0.0
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LogsScreen(onNavigateBack: () -> Unit) {
@@ -100,6 +132,26 @@ fun LogsScreen(onNavigateBack: () -> Unit) {
     }
 }
 
+/**
+ * Composable that renders a single log entry as a card.
+ *
+ * This component displays log metadata including level, tag, and message,
+ * with color coding based on the log level for quick visual identification.
+ *
+ * Color Scheme:
+ * - DEBUG: Gray (neutral, informational)
+ * - INFO: Blue (primary color, normal operations)
+ * - WARNING: Orange/Tertiary (attention needed)
+ * - ERROR: Red (critical issues)
+ *
+ * The message is displayed in monospace font for better readability of
+ * technical information, stack traces, and formatted data.
+ *
+ * @param logEntry The log entry to display, containing level, tag, message, and timestamp
+ *
+ * @author TheWinterShadow
+ * @since 1.0.0
+ */
 @Composable
 fun LogEntryItem(logEntry: AppLogger.LogEntry) {
     val backgroundColor =
