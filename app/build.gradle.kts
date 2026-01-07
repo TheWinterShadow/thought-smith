@@ -85,7 +85,7 @@ android {
         targetSdk = 36
 
         // Version information for app store releases
-        versionCode = 3 // Increment for each release
+        versionCode = 4 // Increment for each release
         versionName = "1.5" // User-visible version string
 
         // Test runner for instrumented tests
