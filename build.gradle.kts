@@ -23,4 +23,5 @@ plugins {
     alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.versions) // Gradle Versions Plugin for dependency updates
+    alias(libs.plugins.dokka) apply false // Dokka documentation generator
 }

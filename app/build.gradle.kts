@@ -35,6 +35,7 @@ plugins {
     alias(libs.plugins.kotlin.android) // Kotlin language support
     alias(libs.plugins.kotlin.compose) // Compose compiler plugin
     alias(libs.plugins.ktlint) // Kotlin linting and formatting
+    alias(libs.plugins.dokka) // Dokka documentation generator
 }
 
 // Load signing configuration from keystore.properties file
@@ -220,4 +221,55 @@ dependencies {
     // Debug tools (only included in debug builds)
     debugImplementation(libs.androidx.compose.ui.tooling) // Compose layout inspector
     debugImplementation(libs.androidx.compose.ui.test.manifest) // Test manifest for UI testing
+}
+
+/**
+ * Dokka configuration for generating API documentation
+ */
+tasks.dokkaHtml {
+    outputDirectory.set(file("${layout.buildDirectory.get()}/dokka/html"))
+    
+    // Configure Dokka module
+    moduleName.set("Thought Smith")
+    
+    // Include Android sources
+    dokkaSourceSets {
+        configureEach {
+            // Include all source files
+            includeNonPublic.set(false)
+            
+            // Display name for the source set
+            displayName.set("Thought Smith")
+            
+            // Report undocumented code
+            reportUndocumented.set(true)
+            
+            // Skip empty packages
+            skipEmptyPackages.set(true)
+        }
+    }
+}
+
+tasks.dokkaJavadoc {
+    outputDirectory.set(file("${layout.buildDirectory.get()}/dokka/javadoc"))
+    
+    dokkaSourceSets {
+        configureEach {
+            includeNonPublic.set(false)
+            reportUndocumented.set(true)
+            skipEmptyPackages.set(true)
+        }
+    }
+}
+
+tasks.dokkaGfm {
+    outputDirectory.set(file("${layout.buildDirectory.get()}/dokka/gfm"))
+    
+    dokkaSourceSets {
+        configureEach {
+            includeNonPublic.set(false)
+            reportUndocumented.set(true)
+            skipEmptyPackages.set(true)
+        }
+    }
 }

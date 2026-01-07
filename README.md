@@ -101,6 +101,64 @@ The app requires API keys from AI providers. Configure these in the Settings scr
 - **Google Gemini**: Get API key from makersuite.google.com
 - **Anthropic Claude**: Get API key from console.anthropic.com
 
+## 📚 Documentation
+
+### API Documentation
+
+This project uses [Dokka](https://kotlinlang.org/docs/dokka-introduction.html) to automatically generate API documentation from code comments and KDoc.
+
+#### Generating Documentation Locally
+
+To generate documentation locally, run:
+
+```bash
+# Generate HTML documentation
+./gradlew dokkaHtml
+
+# Generate Javadoc format
+./gradlew dokkaJavadoc
+
+# Generate GitHub Flavored Markdown
+./gradlew dokkaGfm
+```
+
+The generated documentation will be available in:
+- HTML: `app/build/dokka/html/`
+- Javadoc: `app/build/dokka/javadoc/`
+- GFM: `app/build/dokka/gfm/`
+
+#### Automatic Documentation Publishing
+
+Documentation is automatically generated and published to GitHub Pages whenever changes are pushed to the `main` branch. The documentation is available at:
+
+**https://[your-username].github.io/thought-smith/**
+
+The GitHub Actions workflow (`.github/workflows/dokka.yml`) handles:
+1. Building the project
+2. Generating Dokka HTML documentation
+3. Publishing to GitHub Pages
+
+#### Writing Documentation
+
+Use KDoc comments to document your code:
+
+```kotlin
+/**
+ * Service for handling speech-to-text and text-to-speech functionality.
+ *
+ * This service provides:
+ * - Speech-to-text conversion using Android's SpeechRecognizer
+ * - Text-to-speech conversion using Android's TextToSpeech engine
+ *
+ * @param context Android context for accessing speech services
+ * @see SpeechRecognizer
+ * @see TextToSpeech
+ */
+class SpeechService(private val context: Context) {
+    // ...
+}
+```
+
 ## 🔧 Technical Details
 
 ### Dependencies
