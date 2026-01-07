@@ -12,10 +12,14 @@ import androidx.activity.result.ActivityResultLauncher
 import com.thewintershadow.thoughtsmith.data.AIProvider
 import com.thewintershadow.thoughtsmith.data.TTSProvider
 import com.thewintershadow.thoughtsmith.repository.AIService
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
@@ -39,6 +43,7 @@ class SpeechService(private val context: Context) {
     private val aiService = AIService()
     private var isTtsInitialized = false
     private var isListening = false
+    private var shouldContinueListening = false
     private var currentTtsProvider: TTSProvider = TTSProvider.LOCAL
 
     init {
@@ -74,6 +79,7 @@ class SpeechService(private val context: Context) {
 
     /**
      * Start listening for speech input and return a Flow of recognized text.
+     * Continuously listens until stopListening() is called.
      *
      * @return Flow that emits recognized text or errors
      */
@@ -92,77 +98,7 @@ class SpeechService(private val context: Context) {
 
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
         isListening = true
-
-        val listener = object : RecognitionListener {
-            override fun onReadyForSpeech(params: Bundle?) {
-                AppLogger.info("SpeechService", "Ready for speech input")
-            }
-
-            override fun onBeginningOfSpeech() {
-                AppLogger.info("SpeechService", "Speech input started")
-            }
-
-            override fun onRmsChanged(rmsdB: Float) {
-                // Audio level changes - can be used for visual feedback
-            }
-
-            override fun onBufferReceived(buffer: ByteArray?) {
-                // Partial recognition results
-            }
-
-            override fun onEndOfSpeech() {
-                AppLogger.info("SpeechService", "Speech input ended")
-            }
-
-            override fun onError(error: Int) {
-                isListening = false
-                val errorMessage = when (error) {
-                    SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
-                    SpeechRecognizer.ERROR_CLIENT -> "Client error"
-                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Insufficient permissions"
-                    SpeechRecognizer.ERROR_NETWORK -> "Network error"
-                    SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
-                    SpeechRecognizer.ERROR_NO_MATCH -> "No speech match"
-                    SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer busy"
-                    SpeechRecognizer.ERROR_SERVER -> "Server error"
-                    SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Speech timeout"
-                    else -> "Unknown error: $error"
-                }
-                AppLogger.error("SpeechService", "Speech recognition error: $errorMessage", null)
-                trySend(Result.failure(Exception(errorMessage)))
-                close()
-            }
-
-            override fun onResults(results: Bundle?) {
-                isListening = false
-                val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                val text = matches?.firstOrNull() ?: ""
-                
-                if (text.isNotBlank()) {
-                    AppLogger.info("SpeechService", "Speech recognized: ${text.take(50)}...")
-                    trySend(Result.success(text))
-                } else {
-                    AppLogger.warning("SpeechService", "No speech recognized")
-                    trySend(Result.failure(Exception("No speech recognized")))
-                }
-                close()
-            }
-
-            override fun onPartialResults(partialResults: Bundle?) {
-                // Partial results can be used for real-time feedback
-                val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                val text = matches?.firstOrNull() ?: ""
-                if (text.isNotBlank()) {
-                    AppLogger.debug("SpeechService", "Partial result: $text")
-                }
-            }
-
-            override fun onEvent(eventType: Int, params: Bundle?) {
-                // Additional events
-            }
-        }
-
-        speechRecognizer?.setRecognitionListener(listener)
+        shouldContinueListening = true
 
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -170,9 +106,117 @@ class SpeechService(private val context: Context) {
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
         }
 
-        speechRecognizer?.startListening(intent)
+        // Create a coroutine scope for restarting recognition
+        val recognitionScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+        fun startRecognition() {
+            if (!shouldContinueListening || speechRecognizer == null) {
+                return
+            }
+
+            val listener = object : RecognitionListener {
+                override fun onReadyForSpeech(params: Bundle?) {
+                    AppLogger.info("SpeechService", "Ready for speech input")
+                }
+
+                override fun onBeginningOfSpeech() {
+                    AppLogger.info("SpeechService", "Speech input started")
+                }
+
+                override fun onRmsChanged(rmsdB: Float) {
+                    // Audio level changes - can be used for visual feedback
+                }
+
+                override fun onBufferReceived(buffer: ByteArray?) {
+                    // Partial recognition results
+                }
+
+                override fun onEndOfSpeech() {
+                    AppLogger.info("SpeechService", "Speech input ended")
+                }
+
+                override fun onError(error: Int) {
+                    val errorMessage = when (error) {
+                        SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
+                        SpeechRecognizer.ERROR_CLIENT -> "Client error"
+                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Insufficient permissions"
+                        SpeechRecognizer.ERROR_NETWORK -> "Network error"
+                        SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
+                        SpeechRecognizer.ERROR_NO_MATCH -> "No speech match"
+                        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer busy"
+                        SpeechRecognizer.ERROR_SERVER -> "Server error"
+                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Speech timeout"
+                        else -> "Unknown error: $error"
+                    }
+                    
+                    // Only log non-fatal errors (timeout, no match, etc. are expected during pauses)
+                    val isFatalError = error in listOf(
+                        SpeechRecognizer.ERROR_AUDIO,
+                        SpeechRecognizer.ERROR_CLIENT,
+                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS,
+                        SpeechRecognizer.ERROR_NETWORK,
+                        SpeechRecognizer.ERROR_SERVER
+                    )
+                    
+                    if (isFatalError) {
+                        AppLogger.error("SpeechService", "Fatal speech recognition error: $errorMessage", null)
+                        isListening = false
+                        shouldContinueListening = false
+                        trySend(Result.failure(Exception(errorMessage)))
+                        close()
+                    } else {
+                        // Recoverable errors (timeout, no match) - just restart listening
+                        AppLogger.debug("SpeechService", "Recoverable error, restarting: $errorMessage")
+                        if (shouldContinueListening) {
+                            // Small delay before restarting to avoid rapid restarts
+                            recognitionScope.launch {
+                                delay(100)
+                                if (shouldContinueListening) {
+                                    startRecognition()
+                                }
+                            }
+                        }
+                    }
+                }
+
+                override fun onResults(results: Bundle?) {
+                    val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    val text = matches?.firstOrNull() ?: ""
+                    
+                    if (text.isNotBlank()) {
+                        AppLogger.info("SpeechService", "Speech recognized: ${text.take(50)}...")
+                        trySend(Result.success(text))
+                    }
+                    
+                    // Continue listening after getting results
+                    if (shouldContinueListening) {
+                        startRecognition()
+                    }
+                }
+
+                override fun onPartialResults(partialResults: Bundle?) {
+                    // Partial results can be used for real-time feedback
+                    val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    val text = matches?.firstOrNull() ?: ""
+                    if (text.isNotBlank()) {
+                        AppLogger.debug("SpeechService", "Partial result: $text")
+                    }
+                }
+
+                override fun onEvent(eventType: Int, params: Bundle?) {
+                    // Additional events
+                }
+            }
+
+            speechRecognizer?.setRecognitionListener(listener)
+            speechRecognizer?.startListening(intent)
+        }
+
+        // Start the first recognition session
+        startRecognition()
 
         awaitClose {
+            shouldContinueListening = false
             stopListening()
         }
     }
@@ -181,6 +225,7 @@ class SpeechService(private val context: Context) {
      * Stop listening for speech input.
      */
     fun stopListening() {
+        shouldContinueListening = false
         if (isListening) {
             speechRecognizer?.stopListening()
             isListening = false

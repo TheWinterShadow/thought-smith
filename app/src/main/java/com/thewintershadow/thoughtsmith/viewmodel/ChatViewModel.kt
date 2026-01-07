@@ -455,7 +455,8 @@ class ChatViewModel(
                     )
                 }
                 .collect { result ->
-                    _uiState.value = _uiState.value.copy(isListening = false)
+                    // Keep listening active - don't set isListening = false here
+                    // Only stop when the flow completes (which happens when stopListening is called)
                     if (result.isSuccess) {
                         val recognizedText = result.getOrNull() ?: ""
                         if (recognizedText.isNotBlank()) {
@@ -463,13 +464,19 @@ class ChatViewModel(
                             sendMessage(recognizedText)
                         }
                     } else {
+                        // Only show error for fatal errors (non-fatal ones are handled internally)
                         val error = result.exceptionOrNull()
-                        AppLogger.error("ChatViewModel", "Speech recognition failed", error)
-                        _uiState.value = _uiState.value.copy(
-                            error = error?.message ?: "Speech recognition failed"
-                        )
+                        if (error != null && error.message?.contains("Fatal", ignoreCase = true) == true) {
+                            AppLogger.error("ChatViewModel", "Fatal speech recognition error", error)
+                            _uiState.value = _uiState.value.copy(
+                                isListening = false,
+                                error = error.message ?: "Speech recognition failed"
+                            )
+                        }
                     }
                 }
+            // Flow completed - listening has stopped
+            _uiState.value = _uiState.value.copy(isListening = false)
         }
     }
 
