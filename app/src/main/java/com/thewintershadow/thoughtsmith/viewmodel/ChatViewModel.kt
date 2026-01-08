@@ -3,7 +3,6 @@ package com.thewintershadow.thoughtsmith.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.thewintershadow.thoughtsmith.data.AIProvider
 import com.thewintershadow.thoughtsmith.data.Message
 import com.thewintershadow.thoughtsmith.repository.AIService
 import com.thewintershadow.thoughtsmith.repository.FileStorageService
@@ -198,9 +197,13 @@ class ChatViewModel(
                         val currentSettings = settingsRepository.settings.first()
                         speakText(
                             aiResponse,
-                            currentSettings.ttsApiKey, // Use TTS-specific API key
-                            currentSettings.ttsProviderType, // TTS provider type
-                            currentSettings.ttsModel, // TTS model
+                            currentSettings.ttsOpenAIApiKey,
+                            currentSettings.ttsOpenAIModel,
+                            currentSettings.ttsGeminiApiKey,
+                            currentSettings.ttsGeminiModel,
+                            currentSettings.ttsGeminiVoiceName,
+                            currentSettings.ttsAnthropicApiKey,
+                            currentSettings.ttsAnthropicModel,
                             currentSettings.awsAccessKey,
                             currentSettings.awsSecretKey,
                             currentSettings.awsRegion,
@@ -468,8 +471,6 @@ class ChatViewModel(
                             error = e.message ?: "Speech recognition failed",
                         )
                 }.collect { result ->
-                    // Keep listening active - don't set isListening = false here
-                    // Only stop when the flow completes (which happens when stopListening is called)
                     if (result.isSuccess) {
                         val recognizedText = result.getOrNull() ?: ""
                         if (recognizedText.isNotBlank()) {
@@ -477,18 +478,13 @@ class ChatViewModel(
                             sendMessage(recognizedText)
                         }
                     } else {
-                        // Only show error for fatal errors (non-fatal ones are handled internally)
                         val error = result.exceptionOrNull()
-                        if (error != null &&
-                            error.message?.contains("Fatal", ignoreCase = true) == true
-                        ) {
-                            AppLogger.error("ChatViewModel", "Fatal speech recognition error", error)
-                            _uiState.value =
-                                _uiState.value.copy(
-                                    isListening = false,
-                                    error = error.message ?: "Speech recognition failed",
-                                )
-                        }
+                        AppLogger.error("ChatViewModel", "Speech recognition error", error)
+                        _uiState.value =
+                            _uiState.value.copy(
+                                isListening = false,
+                                error = error?.message ?: "Speech recognition failed",
+                            )
                     }
                 }
             // Flow completed - listening has stopped
@@ -511,18 +507,26 @@ class ChatViewModel(
      * Speak the given text using text-to-speech.
      *
      * @param text The text to speak
-     * @param ttsApiKey API key for OpenAI/Anthropic TTS (required if using OPENAI or ANTHROPIC provider)
-     * @param ttsProviderType The AI provider for TTS (OpenAI or Anthropic)
-     * @param ttsModel The TTS model/voice to use
+     * @param ttsOpenAIApiKey API key for OpenAI TTS
+     * @param ttsOpenAIModel Model for OpenAI TTS
+     * @param ttsGeminiApiKey API key for Gemini TTS
+     * @param ttsGeminiModel Model for Gemini TTS
+     * @param ttsGeminiVoiceName Voice name for Gemini TTS
+     * @param ttsAnthropicApiKey API key for Anthropic TTS
+     * @param ttsAnthropicModel Model for Anthropic TTS
      * @param awsAccessKey AWS access key for AWS Polly (required if using AWS_POLLY provider)
      * @param awsSecretKey AWS secret key for AWS Polly (required if using AWS_POLLY provider)
      * @param awsRegion AWS region for AWS Polly (required if using AWS_POLLY provider)
      */
     private fun speakText(
         text: String,
-        ttsApiKey: String = "",
-        ttsProviderType: AIProvider = AIProvider.OPENAI,
-        ttsModel: String = "tts-1",
+        ttsOpenAIApiKey: String = "",
+        ttsOpenAIModel: String = "tts-1",
+        ttsGeminiApiKey: String = "",
+        ttsGeminiModel: String = "gemini-2.5-flash-preview-tts",
+        ttsGeminiVoiceName: String = "Kore",
+        ttsAnthropicApiKey: String = "",
+        ttsAnthropicModel: String = "",
         awsAccessKey: String = "",
         awsSecretKey: String = "",
         awsRegion: String = "us-east-1",
@@ -532,7 +536,19 @@ class ChatViewModel(
         _uiState.value = _uiState.value.copy(isSpeaking = true)
 
         viewModelScope.launch {
-            speechService.speak(text, ttsApiKey, ttsProviderType, ttsModel, awsAccessKey, awsSecretKey, awsRegion)
+            speechService.speak(
+                text,
+                ttsOpenAIApiKey,
+                ttsOpenAIModel,
+                ttsGeminiApiKey,
+                ttsGeminiModel,
+                ttsGeminiVoiceName,
+                ttsAnthropicApiKey,
+                ttsAnthropicModel,
+                awsAccessKey,
+                awsSecretKey,
+                awsRegion,
+            )
 
             // Check if speaking is done (polling approach)
             // Wait a bit and check if still speaking

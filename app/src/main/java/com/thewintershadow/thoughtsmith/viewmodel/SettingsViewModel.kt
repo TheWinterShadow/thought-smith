@@ -211,43 +211,99 @@ class SettingsViewModel(
     }
 
     /**
-     * Update the TTS provider type (for OpenAI/Anthropic TTS).
+     * Update OpenAI TTS API key.
      *
-     * @param provider The AI provider to use for TTS
+     * @param apiKey The OpenAI API key for TTS
      */
-    fun updateTTSProviderType(provider: AIProvider) {
-        AppLogger.info("SettingsViewModel", "Updating TTS provider type to ${provider.displayName}")
+    fun updateTTSOpenAIApiKey(apiKey: String) {
+        AppLogger.debug("SettingsViewModel", "OpenAI TTS API key updated")
 
         viewModelScope.launch {
-            val updatedSettings = _uiState.value.settings.copy(ttsProviderType = provider)
+            val updatedSettings = _uiState.value.settings.copy(ttsOpenAIApiKey = apiKey)
             settingsRepository.updateSettings(updatedSettings)
         }
     }
 
     /**
-     * Update the TTS model/voice.
+     * Update OpenAI TTS model/voice.
      *
-     * @param model The TTS model or voice ID to use
+     * @param model The OpenAI TTS model (e.g., "tts-1", "tts-1-hd")
      */
-    fun updateTTSModel(model: String) {
-        AppLogger.info("SettingsViewModel", "Updating TTS model to $model")
+    fun updateTTSOpenAIModel(model: String) {
+        AppLogger.info("SettingsViewModel", "Updating OpenAI TTS model to $model")
 
         viewModelScope.launch {
-            val updatedSettings = _uiState.value.settings.copy(ttsModel = model)
+            val updatedSettings = _uiState.value.settings.copy(ttsOpenAIModel = model)
             settingsRepository.updateSettings(updatedSettings)
         }
     }
 
     /**
-     * Update the TTS API key (separate from text API key).
+     * Update Gemini TTS API key.
      *
-     * @param apiKey The API key for TTS provider
+     * @param apiKey The Gemini API key for TTS
      */
-    fun updateTTSApiKey(apiKey: String) {
-        AppLogger.debug("SettingsViewModel", "TTS API key updated")
+    fun updateTTSGeminiApiKey(apiKey: String) {
+        AppLogger.debug("SettingsViewModel", "Gemini TTS API key updated")
 
         viewModelScope.launch {
-            val updatedSettings = _uiState.value.settings.copy(ttsApiKey = apiKey)
+            val updatedSettings = _uiState.value.settings.copy(ttsGeminiApiKey = apiKey)
+            settingsRepository.updateSettings(updatedSettings)
+        }
+    }
+
+    /**
+     * Update Gemini TTS model.
+     *
+     * @param model The Gemini TTS model (e.g., "gemini-2.5-flash-preview-tts")
+     */
+    fun updateTTSGeminiModel(model: String) {
+        AppLogger.info("SettingsViewModel", "Updating Gemini TTS model to $model")
+
+        viewModelScope.launch {
+            val updatedSettings = _uiState.value.settings.copy(ttsGeminiModel = model)
+            settingsRepository.updateSettings(updatedSettings)
+        }
+    }
+
+    /**
+     * Update Gemini TTS voice name.
+     *
+     * @param voiceName The Gemini TTS voice name (e.g., "Kore", "Aoede", "Charon", "Fenrir")
+     */
+    fun updateTTSGeminiVoiceName(voiceName: String) {
+        AppLogger.info("SettingsViewModel", "Updating Gemini TTS voice name to $voiceName")
+
+        viewModelScope.launch {
+            val updatedSettings = _uiState.value.settings.copy(ttsGeminiVoiceName = voiceName)
+            settingsRepository.updateSettings(updatedSettings)
+        }
+    }
+
+    /**
+     * Update Anthropic TTS API key.
+     *
+     * @param apiKey The Anthropic API key for TTS
+     */
+    fun updateTTSAnthropicApiKey(apiKey: String) {
+        AppLogger.debug("SettingsViewModel", "Anthropic TTS API key updated")
+
+        viewModelScope.launch {
+            val updatedSettings = _uiState.value.settings.copy(ttsAnthropicApiKey = apiKey)
+            settingsRepository.updateSettings(updatedSettings)
+        }
+    }
+
+    /**
+     * Update Anthropic TTS model/voice.
+     *
+     * @param model The Anthropic TTS model
+     */
+    fun updateTTSAnthropicModel(model: String) {
+        AppLogger.info("SettingsViewModel", "Updating Anthropic TTS model to $model")
+
+        viewModelScope.launch {
+            val updatedSettings = _uiState.value.settings.copy(ttsAnthropicModel = model)
             settingsRepository.updateSettings(updatedSettings)
         }
     }

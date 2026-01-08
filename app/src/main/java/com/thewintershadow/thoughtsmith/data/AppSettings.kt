@@ -19,11 +19,15 @@ package com.thewintershadow.thoughtsmith.data
  *                     This shapes the AI's personality and approach to conversations.
  * @property outputFormatInstructions Instructions for how the AI should format the
  *                                    generated journal entries. Controls structure and style.
- * @property ttsProvider The Text-to-Speech provider to use (Local, OpenAI, Anthropic, or AWS Polly).
+ * @property ttsProvider The Text-to-Speech provider to use (Local, OpenAI, Gemini, Anthropic, or AWS Polly).
  *                       Defaults to LOCAL for offline support.
- * @property ttsProviderType The AI provider for TTS (OpenAI, Anthropic) - separate from text API provider.
- * @property ttsModel The TTS model/voice to use (e.g., "tts-1", "tts-1-hd" for OpenAI, voice ID for AWS Polly).
- * @property ttsApiKey The API key for TTS provider (separate from text API key).
+ * @property ttsOpenAIApiKey API key for OpenAI TTS (separate from text API key)
+ * @property ttsOpenAIModel OpenAI TTS model (e.g., "tts-1", "tts-1-hd")
+ * @property ttsGeminiApiKey API key for Gemini TTS (separate from text API key)
+ * @property ttsGeminiModel Gemini TTS model (e.g., "gemini-2.5-flash-preview-tts")
+ * @property ttsGeminiVoiceName Gemini TTS voice name (e.g., "Kore", "Aoede", "Charon", "Fenrir")
+ * @property ttsAnthropicApiKey API key for Anthropic TTS (separate from text API key)
+ * @property ttsAnthropicModel Anthropic TTS model (when available)
  * @property awsAccessKey AWS access key for AWS Polly TTS (required if using AWS_POLLY)
  * @property awsSecretKey AWS secret key for AWS Polly TTS (required if using AWS_POLLY)
  * @property awsRegion AWS region for AWS Polly TTS (e.g., "us-east-1")
@@ -53,9 +57,17 @@ data class AppSettings(
         "Format the journal entry as a clean markdown document with a " +
             "title, date, and well-organized sections based on our conversation.",
     val ttsProvider: TTSProvider = TTSProvider.LOCAL,
-    val ttsProviderType: AIProvider = AIProvider.OPENAI, // For OpenAI/Anthropic TTS
-    val ttsModel: String = "tts-1", // TTS model/voice
-    val ttsApiKey: String = "", // Separate API key for TTS
+    // OpenAI TTS configuration
+    val ttsOpenAIApiKey: String = "",
+    val ttsOpenAIModel: String = "tts-1",
+    // Gemini TTS configuration
+    val ttsGeminiApiKey: String = "",
+    val ttsGeminiModel: String = "gemini-2.5-flash-preview-tts",
+    val ttsGeminiVoiceName: String = "Kore",
+    // Anthropic TTS configuration
+    val ttsAnthropicApiKey: String = "",
+    val ttsAnthropicModel: String = "",
+    // AWS Polly configuration
     val awsAccessKey: String = "",
     val awsSecretKey: String = "",
     val awsRegion: String = "us-east-1",

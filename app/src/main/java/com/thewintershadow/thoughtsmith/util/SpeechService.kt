@@ -2,23 +2,19 @@ package com.thewintershadow.thoughtsmith.util
 
 import android.content.Context
 import android.content.Intent
+import android.media.AudioTrack
 import android.media.MediaPlayer
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
-import com.thewintershadow.thoughtsmith.data.AIProvider
 import com.thewintershadow.thoughtsmith.data.TTSProvider
 import com.thewintershadow.thoughtsmith.repository.AIService
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
@@ -41,10 +37,10 @@ class SpeechService(
     private var textToSpeech: TextToSpeech? = null
     private var speechRecognizer: SpeechRecognizer? = null
     private var mediaPlayer: MediaPlayer? = null
+    private var audioTrack: AudioTrack? = null
     private val aiService = AIService()
     private var isTtsInitialized = false
     private var isListening = false
-    private var shouldContinueListening = false
     private var currentTtsProvider: TTSProvider = TTSProvider.LOCAL
 
     init {
@@ -121,7 +117,6 @@ class SpeechService(
 
             speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
             isListening = true
-            shouldContinueListening = true
 
             val intent =
                 Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -130,128 +125,88 @@ class SpeechService(
                     putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
                 }
 
-            // Create a coroutine scope for restarting recognition
-            val recognitionScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+            val listener =
+                object : RecognitionListener {
+                    override fun onReadyForSpeech(params: Bundle?) {
+                        AppLogger.info("SpeechService", "Ready for speech input")
+                    }
 
-            fun startRecognition() {
-                if (!shouldContinueListening || speechRecognizer == null) {
-                    return
-                }
+                    override fun onBeginningOfSpeech() {
+                        AppLogger.info("SpeechService", "Speech input started")
+                    }
 
-                val listener =
-                    object : RecognitionListener {
-                        override fun onReadyForSpeech(params: Bundle?) {
-                            AppLogger.info("SpeechService", "Ready for speech input")
-                        }
+                    override fun onRmsChanged(rmsdB: Float) {
+                        // Audio level changes
+                    }
 
-                        override fun onBeginningOfSpeech() {
-                            AppLogger.info("SpeechService", "Speech input started")
-                        }
+                    override fun onBufferReceived(buffer: ByteArray?) {
+                        // Partial recognition results
+                    }
 
-                        override fun onRmsChanged(rmsdB: Float) {
-                            // Audio level changes - can be used for visual feedback
-                        }
+                    override fun onEndOfSpeech() {
+                        AppLogger.info("SpeechService", "Speech input ended")
+                    }
 
-                        override fun onBufferReceived(buffer: ByteArray?) {
-                            // Partial recognition results
-                        }
-
-                        override fun onEndOfSpeech() {
-                            AppLogger.info("SpeechService", "Speech input ended")
-                        }
-
-                        override fun onError(error: Int) {
-                            val errorMessage =
-                                when (error) {
-                                    SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
-                                    SpeechRecognizer.ERROR_CLIENT -> "Client error"
-                                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Insufficient permissions"
-                                    SpeechRecognizer.ERROR_NETWORK -> "Network error"
-                                    SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
-                                    SpeechRecognizer.ERROR_NO_MATCH -> "No speech match"
-                                    SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer busy"
-                                    SpeechRecognizer.ERROR_SERVER -> "Server error"
-                                    SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Speech timeout"
-                                    else -> "Unknown error: $error"
-                                }
-
-                            // Only log non-fatal errors (timeout, no match, etc. are expected during pauses)
-                            val isFatalError =
-                                error in
-                                    listOf(
-                                        SpeechRecognizer.ERROR_AUDIO,
-                                        SpeechRecognizer.ERROR_CLIENT,
-                                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS,
-                                        SpeechRecognizer.ERROR_NETWORK,
-                                        SpeechRecognizer.ERROR_SERVER,
-                                    )
-
-                            if (isFatalError) {
-                                AppLogger.error("SpeechService", "Fatal speech recognition error: $errorMessage", null)
-                                isListening = false
-                                shouldContinueListening = false
-                                trySend(Result.failure(Exception(errorMessage)))
-                                close()
-                            } else {
-                                // Recoverable errors (timeout, no match) - just restart listening
-                                AppLogger.debug("SpeechService", "Recoverable error, restarting: $errorMessage")
-                                if (shouldContinueListening) {
-                                    // Small delay before restarting to avoid rapid restarts
-                                    recognitionScope.launch {
-                                        delay(100)
-                                        if (shouldContinueListening) {
-                                            startRecognition()
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        override fun onResults(results: Bundle?) {
-                            val matches =
-                                results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                            val text = matches?.firstOrNull() ?: ""
-
-                            if (text.isNotBlank()) {
-                                AppLogger.info("SpeechService", "Speech recognized: ${text.take(50)}...")
-                                trySend(Result.success(text))
+                    override fun onError(error: Int) {
+                        val errorMessage =
+                            when (error) {
+                                SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
+                                SpeechRecognizer.ERROR_CLIENT -> "Client error"
+                                SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Insufficient permissions"
+                                SpeechRecognizer.ERROR_NETWORK -> "Network error"
+                                SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
+                                SpeechRecognizer.ERROR_NO_MATCH -> "No speech match"
+                                SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer busy"
+                                SpeechRecognizer.ERROR_SERVER -> "Server error"
+                                SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Speech timeout"
+                                else -> "Unknown error: $error"
                             }
 
-                            // Continue listening after getting results
-                            if (shouldContinueListening) {
-                                startRecognition()
-                            }
+                        AppLogger.error("SpeechService", "Speech recognition error: $errorMessage", null)
+                        isListening = false
+                        trySend(Result.failure(Exception(errorMessage)))
+                        close()
+                    }
+
+                    override fun onResults(results: Bundle?) {
+                        val matches =
+                            results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                        val text = matches?.firstOrNull() ?: ""
+
+                        if (text.isNotBlank()) {
+                            AppLogger.info("SpeechService", "Speech recognized: ${text.take(50)}...")
+                            trySend(Result.success(text))
                         }
 
-                        override fun onPartialResults(partialResults: Bundle?) {
-                            // Partial results can be used for real-time feedback
-                            val matches =
-                                partialResults?.getStringArrayList(
-                                    SpeechRecognizer.RESULTS_RECOGNITION,
-                                )
-                            val text = matches?.firstOrNull() ?: ""
-                            if (text.isNotBlank()) {
-                                AppLogger.debug("SpeechService", "Partial result: $text")
-                            }
-                        }
+                        // Recognition session ended
+                        isListening = false
+                        close()
+                    }
 
-                        override fun onEvent(
-                            eventType: Int,
-                            params: Bundle?,
-                        ) {
-                            // Additional events
+                    override fun onPartialResults(partialResults: Bundle?) {
+                        // Partial results can be used for real-time feedback
+                        val matches =
+                            partialResults?.getStringArrayList(
+                                SpeechRecognizer.RESULTS_RECOGNITION,
+                            )
+                        val text = matches?.firstOrNull() ?: ""
+                        if (text.isNotBlank()) {
+                            AppLogger.debug("SpeechService", "Partial result: $text")
                         }
                     }
 
-                speechRecognizer?.setRecognitionListener(listener)
-                speechRecognizer?.startListening(intent)
-            }
+                    override fun onEvent(
+                        eventType: Int,
+                        params: Bundle?,
+                    ) {
+                        // Additional events
+                    }
+                }
 
-            // Start the first recognition session
-            startRecognition()
+            speechRecognizer?.setRecognitionListener(listener)
+            speechRecognizer?.startListening(intent)
 
             awaitClose {
-                shouldContinueListening = false
                 stopListening()
             }
         }
@@ -260,7 +215,6 @@ class SpeechService(
      * Stop listening for speech input.
      */
     fun stopListening() {
-        shouldContinueListening = false
         if (isListening) {
             speechRecognizer?.stopListening()
             isListening = false
@@ -281,12 +235,16 @@ class SpeechService(
 
     /**
      * Speak the given text using text-to-speech.
-     * Uses the currently selected TTS provider.
+     * Uses the currently selected TTS provider with provider-specific configuration.
      *
      * @param text The text to speak
-     * @param ttsApiKey API key for OpenAI/Anthropic TTS (required if using OPENAI or ANTHROPIC provider)
-     * @param ttsProviderType The AI provider for TTS (OpenAI or Anthropic)
-     * @param ttsModel The TTS model/voice to use
+     * @param ttsOpenAIApiKey API key for OpenAI TTS
+     * @param ttsOpenAIModel Model for OpenAI TTS (e.g., "tts-1", "tts-1-hd")
+     * @param ttsGeminiApiKey API key for Gemini TTS
+     * @param ttsGeminiModel Model for Gemini TTS (e.g., "gemini-2.5-flash-preview-tts")
+     * @param ttsGeminiVoiceName Voice name for Gemini TTS (e.g., "Kore", "Aoede", "Charon", "Fenrir")
+     * @param ttsAnthropicApiKey API key for Anthropic TTS
+     * @param ttsAnthropicModel Model for Anthropic TTS
      * @param awsAccessKey AWS access key for AWS Polly (required if using AWS_POLLY provider)
      * @param awsSecretKey AWS secret key for AWS Polly (required if using AWS_POLLY provider)
      * @param awsRegion AWS region for AWS Polly (required if using AWS_POLLY provider)
@@ -294,10 +252,13 @@ class SpeechService(
      */
     suspend fun speak(
         text: String,
-        ttsApiKey: String = "",
-        ttsProviderType: com.thewintershadow.thoughtsmith.data.AIProvider =
-            com.thewintershadow.thoughtsmith.data.AIProvider.OPENAI,
-        ttsModel: String = "tts-1",
+        ttsOpenAIApiKey: String = "",
+        ttsOpenAIModel: String = "tts-1",
+        ttsGeminiApiKey: String = "",
+        ttsGeminiModel: String = "gemini-2.5-flash-preview-tts",
+        ttsGeminiVoiceName: String = "Kore",
+        ttsAnthropicApiKey: String = "",
+        ttsAnthropicModel: String = "",
         awsAccessKey: String = "",
         awsSecretKey: String = "",
         awsRegion: String = "us-east-1",
@@ -310,20 +271,9 @@ class SpeechService(
 
         when (currentTtsProvider) {
             TTSProvider.LOCAL -> speakLocal(text, queueMode)
-            TTSProvider.OPENAI -> {
-                if (ttsProviderType == AIProvider.OPENAI) {
-                    speakOpenAI(text, ttsApiKey, ttsModel)
-                } else {
-                    AppLogger.warning("SpeechService", "TTS provider type mismatch for OpenAI TTS")
-                }
-            }
-            TTSProvider.ANTHROPIC -> {
-                if (ttsProviderType == AIProvider.ANTHROPIC) {
-                    speakAnthropic(text, ttsApiKey)
-                } else {
-                    AppLogger.warning("SpeechService", "TTS provider type mismatch for Anthropic TTS")
-                }
-            }
+            TTSProvider.OPENAI -> speakOpenAI(text, ttsOpenAIApiKey, ttsOpenAIModel)
+            TTSProvider.GEMINI -> speakGemini(text, ttsGeminiApiKey, ttsGeminiModel, ttsGeminiVoiceName)
+            TTSProvider.ANTHROPIC -> speakAnthropic(text, ttsAnthropicApiKey)
             TTSProvider.AWS_POLLY -> speakAWSPolly(text, awsAccessKey, awsSecretKey, awsRegion)
         }
     }
@@ -371,6 +321,41 @@ class SpeechService(
             }
         } catch (e: Exception) {
             AppLogger.error("SpeechService", "Exception while generating OpenAI TTS", e)
+        }
+    }
+
+    /**
+     * Speak using Google Gemini TTS API.
+     */
+    private suspend fun speakGemini(
+        text: String,
+        apiKey: String,
+        model: String = "gemini-2.5-flash-preview-tts",
+        voiceName: String = "Kore",
+    ) {
+        if (apiKey.isBlank()) {
+            AppLogger.warning("SpeechService", "API key required for Gemini TTS")
+            return
+        }
+
+        AppLogger.info(
+            "SpeechService",
+            "Generating speech with Gemini TTS (model: $model, voice: $voiceName): ${text.take(50)}...",
+        )
+
+        try {
+            val audioResult = aiService.getGeminiTTSAudio(text, apiKey, model = model, voiceName = voiceName)
+
+            if (audioResult.isSuccess) {
+                val audioData = audioResult.getOrNull() ?: return
+                // Gemini TTS returns PCM format, need to convert to WAV for MediaPlayer
+                playAudioData(audioData, isPcmFormat = true)
+            } else {
+                val error = audioResult.exceptionOrNull()
+                AppLogger.error("SpeechService", "Failed to generate Gemini TTS", error)
+            }
+        } catch (e: Exception) {
+            AppLogger.error("SpeechService", "Exception while generating Gemini TTS", e)
         }
     }
 
@@ -435,24 +420,102 @@ class SpeechService(
     }
 
     /**
+     * Convert PCM audio data to WAV format.
+     *
+     * Gemini TTS returns PCM audio (s16le, 24000 Hz, mono) which MediaPlayer cannot play directly.
+     * This function wraps the PCM data with a WAV header so it can be played.
+     *
+     * @param pcmData Raw PCM audio bytes (s16le, 24000 Hz, mono)
+     * @return WAV-formatted audio bytes
+     */
+    private fun convertPcmToWav(pcmData: ByteArray): ByteArray {
+        val sampleRate = 24000
+        val channels = 1
+        val bitsPerSample = 16
+        val dataSize = pcmData.size
+        val fileSize = 36 + dataSize
+
+        val wavHeader = ByteArray(44)
+        var offset = 0
+
+        // RIFF header
+        "RIFF".toByteArray().copyInto(wavHeader, offset)
+        offset += 4
+        wavHeader[offset++] = (fileSize and 0xFF).toByte()
+        wavHeader[offset++] = ((fileSize shr 8) and 0xFF).toByte()
+        wavHeader[offset++] = ((fileSize shr 16) and 0xFF).toByte()
+        wavHeader[offset++] = ((fileSize shr 24) and 0xFF).toByte()
+        "WAVE".toByteArray().copyInto(wavHeader, offset)
+        offset += 4
+
+        // fmt chunk
+        "fmt ".toByteArray().copyInto(wavHeader, offset)
+        offset += 4
+        wavHeader[offset++] = 16 // chunk size
+        wavHeader[offset++] = 0
+        wavHeader[offset++] = 0
+        wavHeader[offset++] = 0
+        wavHeader[offset++] = 1 // audio format (PCM)
+        wavHeader[offset++] = 0
+        wavHeader[offset++] = channels.toByte() // number of channels
+        wavHeader[offset++] = 0
+        wavHeader[offset++] = (sampleRate and 0xFF).toByte()
+        wavHeader[offset++] = ((sampleRate shr 8) and 0xFF).toByte()
+        wavHeader[offset++] = ((sampleRate shr 16) and 0xFF).toByte()
+        wavHeader[offset++] = ((sampleRate shr 24) and 0xFF).toByte()
+        val byteRate = sampleRate * channels * (bitsPerSample / 8)
+        wavHeader[offset++] = (byteRate and 0xFF).toByte()
+        wavHeader[offset++] = ((byteRate shr 8) and 0xFF).toByte()
+        wavHeader[offset++] = ((byteRate shr 16) and 0xFF).toByte()
+        wavHeader[offset++] = ((byteRate shr 24) and 0xFF).toByte()
+        wavHeader[offset++] = (channels * (bitsPerSample / 8)).toByte() // block align
+        wavHeader[offset++] = 0
+        wavHeader[offset++] = bitsPerSample.toByte() // bits per sample
+        wavHeader[offset++] = 0
+
+        // data chunk
+        "data".toByteArray().copyInto(wavHeader, offset)
+        offset += 4
+        wavHeader[offset++] = (dataSize and 0xFF).toByte()
+        wavHeader[offset++] = ((dataSize shr 8) and 0xFF).toByte()
+        wavHeader[offset++] = ((dataSize shr 16) and 0xFF).toByte()
+        wavHeader[offset++] = ((dataSize shr 24) and 0xFF).toByte()
+
+        // Combine header and PCM data
+        return wavHeader + pcmData
+    }
+
+    /**
      * Save audio data to temporary file and play it.
      *
      * This helper method handles the common workflow of:
-     * 1. Saving received audio data to a temporary MP3 file
+     * 1. Saving received audio data to a temporary file (MP3 for most providers, WAV for Gemini PCM)
      * 2. Switching to the main thread for MediaPlayer operations
      * 3. Playing the audio file
      *
      * The temporary file is automatically deleted after playback completes.
      *
-     * @param audioData Raw audio bytes (typically MP3 format) from TTS service
+     * @param audioData Raw audio bytes (MP3 format for most providers, PCM for Gemini)
+     * @param isPcmFormat If true, converts PCM to WAV before saving
      */
-    private suspend fun playAudioData(audioData: ByteArray) {
+    private suspend fun playAudioData(
+        audioData: ByteArray,
+        isPcmFormat: Boolean = false,
+    ) {
         withContext(Dispatchers.IO) {
-            // Create temporary file in cache directory with unique timestamp
-            val tempFile = File(context.cacheDir, "tts_${System.currentTimeMillis()}.mp3")
+            val fileExtension = if (isPcmFormat) "wav" else "mp3"
+            val tempFile = File(context.cacheDir, "tts_${System.currentTimeMillis()}.$fileExtension")
+
+            // Convert PCM to WAV if needed, otherwise use audio data as-is
+            val audioToWrite =
+                if (isPcmFormat) {
+                    convertPcmToWav(audioData)
+                } else {
+                    audioData
+                }
 
             // Write audio data to file
-            FileOutputStream(tempFile).use { it.write(audioData) }
+            FileOutputStream(tempFile).use { it.write(audioToWrite) }
 
             // Switch to main thread for MediaPlayer (requires UI thread)
             withContext(Dispatchers.Main) {
@@ -520,13 +583,23 @@ class SpeechService(
             it.release()
             mediaPlayer = null
         }
+        audioTrack?.let {
+            if (it.playState == AudioTrack.PLAYSTATE_PLAYING) {
+                it.stop()
+            }
+            it.release()
+            audioTrack = null
+        }
         AppLogger.info("SpeechService", "Stopped speaking")
     }
 
     /**
      * Check if TTS is currently speaking.
      */
-    fun isSpeaking(): Boolean = (textToSpeech?.isSpeaking ?: false) || (mediaPlayer?.isPlaying ?: false)
+    fun isSpeaking(): Boolean =
+        (textToSpeech?.isSpeaking ?: false) ||
+            (mediaPlayer?.isPlaying ?: false) ||
+            (audioTrack?.playState == AudioTrack.PLAYSTATE_PLAYING)
 
     /**
      * Clean up resources when the service is no longer needed.
@@ -538,6 +611,8 @@ class SpeechService(
         textToSpeech = null
         mediaPlayer?.release()
         mediaPlayer = null
+        audioTrack?.release()
+        audioTrack = null
         AppLogger.info("SpeechService", "SpeechService cleaned up")
     }
 }

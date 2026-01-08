@@ -14,6 +14,7 @@ package com.thewintershadow.thoughtsmith.data
  * This enum defines the different TTS options available to users:
  * - LOCAL: Uses Android's built-in TextToSpeech engine (free, offline)
  * - OPENAI: Uses OpenAI's TTS API for natural voices
+ * - GEMINI: Uses Google Gemini TTS API for natural voices
  * - ANTHROPIC: Uses Anthropic's TTS API (if available)
  * - AWS_POLLY: Uses Amazon Polly TTS service
  *
@@ -27,6 +28,7 @@ enum class TTSProvider(
 ) {
     LOCAL("Local (Device)"),
     OPENAI("OpenAI TTS"),
+    GEMINI("Gemini TTS"),
     ANTHROPIC("Anthropic TTS"),
     AWS_POLLY("AWS Polly"),
 }

@@ -412,16 +412,126 @@ class AIService {
         }
 
     /**
-     * Generate speech from text using Anthropic's TTS API.
+     * Generate speech from text using Google Gemini TTS API (REST fallback).
      *
-     * Note: Anthropic may not have a public TTS API yet. This is a placeholder
-     * for future implementation when the API becomes available.
+     * Uses the Gemini TTS API endpoint with the generateContent method.
+     * Returns PCM audio data (s16le, 24000 Hz, mono) that needs to be converted.
+     * This is used as a fallback when streaming fails.
      *
      * @param text The text to convert to speech
-     * @param apiKey Anthropic API key
+     * @param apiKey Gemini API key
+     * @param model The Gemini TTS model (e.g., "gemini-2.5-flash-preview-tts")
+     * @param voiceName The voice to use (e.g., "Kore", "Aoede", "Charon", "Fenrir")
      *
-     * @return Result containing the audio data as ByteArray or an error
+     * @return Result containing audio data as ByteArray (PCM format) or error
      */
+    suspend fun getGeminiTTSAudio(
+        text: String,
+        apiKey: String,
+        model: String = "gemini-2.5-flash-preview-tts",
+        voiceName: String = "Kore",
+    ): Result<ByteArray> =
+        withContext(Dispatchers.IO) {
+            try {
+                AppLogger.info("AIService", "Requesting TTS audio from Gemini API (model: $model, voice: $voiceName)")
+
+                val requestBody =
+                    gson.toJson(
+                        mapOf(
+                            "contents" to
+                                listOf(
+                                    mapOf(
+                                        "parts" to
+                                            listOf(
+                                                mapOf("text" to text),
+                                            ),
+                                    ),
+                                ),
+                            "generationConfig" to
+                                mapOf(
+                                    "responseModalities" to listOf("AUDIO"),
+                                    "speechConfig" to
+                                        mapOf(
+                                            "voiceConfig" to
+                                                mapOf(
+                                                    "prebuiltVoiceConfig" to
+                                                        mapOf(
+                                                            "voiceName" to voiceName,
+                                                        ),
+                                                ),
+                                        ),
+                                ),
+                            "model" to model,
+                        ),
+                    )
+
+                val request =
+                    Request
+                        .Builder()
+                        .url("https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent")
+                        .addHeader("Content-Type", "application/json")
+                        .addHeader("x-goog-api-key", apiKey)
+                        .post(requestBody.toRequestBody("application/json".toMediaType()))
+                        .build()
+
+                val response = client.newCall(request).execute()
+                val responseBody = response.body.string()
+
+                if (!response.isSuccessful) {
+                    // Try to parse error response for better error message
+                    val errorMessage =
+                        try {
+                            val errorJson = gson.fromJson(responseBody, Map::class.java)
+                            val error = errorJson["error"] as? Map<*, *>
+                            val message = error?.get("message") as? String
+                            val code = error?.get("code") as? Number
+                            val status = error?.get("status") as? String
+
+                            when {
+                                message != null -> {
+                                    val codeStr = code?.let { " (code: $it)" } ?: ""
+                                    val statusStr = status?.let { ", status: $status" } ?: ""
+                                    "Gemini TTS API error$codeStr$statusStr: $message"
+                                }
+                                else -> "Gemini TTS API error: $responseBody"
+                            }
+                        } catch (e: Exception) {
+                            // If parsing fails, use raw response
+                            "Gemini TTS API error: $responseBody"
+                        }
+
+                    AppLogger.error("AIService", errorMessage, null)
+                    return@withContext Result.failure(Exception(errorMessage))
+                }
+
+                // Parse response: candidates[0].content.parts[0].inlineData.data
+                val jsonResponse = gson.fromJson(responseBody, Map::class.java)
+                val candidates = jsonResponse["candidates"] as? List<*>
+                val candidate = candidates?.firstOrNull() as? Map<*, *>
+                val content = candidate?.get("content") as? Map<*, *>
+                val parts = content?.get("parts") as? List<*>
+                val part = parts?.firstOrNull() as? Map<*, *>
+                val inlineData = part?.get("inlineData") as? Map<*, *>
+                val audioDataBase64 = inlineData?.get("data") as? String
+
+                if (audioDataBase64 == null) {
+                    AppLogger.error("AIService", "No audio data in response: $responseBody", null)
+                    return@withContext Result.failure(Exception("No audio data in response"))
+                }
+
+                // Decode base64 audio content (PCM format: s16le, 24000 Hz, mono)
+                val audioData = android.util.Base64.decode(audioDataBase64, android.util.Base64.DEFAULT)
+                AppLogger.info(
+                    "AIService",
+                    "Successfully generated Gemini TTS audio (${audioData.size} bytes, PCM format)",
+                )
+                Result.success(audioData)
+            } catch (e: Exception) {
+                AppLogger.error("AIService", "Exception while getting Gemini TTS audio", e)
+                Result.failure(e)
+            }
+        }
+
     suspend fun getAnthropicTTSAudio(
         text: String,
         apiKey: String,

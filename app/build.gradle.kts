@@ -85,8 +85,8 @@ android {
         targetSdk = 36
 
         // Version information for app store releases
-        versionCode = 4 // Increment for each release
-        versionName = "1.5" // User-visible version string
+        versionCode = 5 // Increment for each release
+        versionName = "1.6" // User-visible version string
 
         // Test runner for instrumented tests
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

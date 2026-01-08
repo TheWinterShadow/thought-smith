@@ -584,12 +584,17 @@ fun TextAPITab(
  *    - Models: tts-1 (fast) or tts-1-hd (high quality)
  *    - Multiple voice options (alloy, echo, fable, nova, etc.)
  *
- * 3. Anthropic TTS:
+ * 3. Gemini TTS:
+ *    - Uses Google Cloud Text-to-Speech API
+ *    - High-quality Neural2 voices (en-US-Neural2-A through J)
+ *    - Requires Google API key (same as Gemini text API)
+ *
+ * 4. Anthropic TTS:
  *    - Placeholder for future Anthropic TTS API
  *    - Not yet publicly available
  *    - Configuration ready for when API launches
  *
- * 4. AWS Polly:
+ * 5. AWS Polly:
  *    - Wide variety of voices and languages
  *    - Requires AWS credentials (access key, secret key, region)
  *    - Both standard and neural engine options
@@ -659,6 +664,12 @@ fun SpeechTab(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     FilterChip(
+                        selected = uiState.settings.ttsProvider == TTSProvider.GEMINI,
+                        onClick = { viewModel.updateTTSProvider(TTSProvider.GEMINI) },
+                        label = { Text("Gemini TTS") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    FilterChip(
                         selected = uiState.settings.ttsProvider == TTSProvider.ANTHROPIC,
                         onClick = { viewModel.updateTTSProvider(TTSProvider.ANTHROPIC) },
                         label = { Text("Anthropic TTS") },
@@ -681,27 +692,17 @@ fun SpeechTab(
                             modifier = Modifier.padding(top = 8.dp),
                         )
                     }
-                    TTSProvider.OPENAI, TTSProvider.ANTHROPIC -> {
+                    TTSProvider.OPENAI -> {
                         Column(
                             modifier = Modifier.padding(top = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
-                            if (uiState.settings.ttsProvider == TTSProvider.ANTHROPIC) {
-                                Text(
-                                    "Note: Anthropic TTS API is not yet publicly available. " +
-                                        "This option will be enabled when the API becomes available.",
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.error,
-                                )
-                            } else {
-                                Text(
-                                    "Configure your TTS API settings. These are completely separate from your Text API configuration.",
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                            }
+                            Text(
+                                "Configure your OpenAI TTS settings. These are completely separate from your Text API configuration.",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
 
-                            // TTS Provider Type (OpenAI or Anthropic)
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
@@ -712,77 +713,39 @@ fun SpeechTab(
                             ) {
                                 Column(
                                     modifier = Modifier.padding(12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
                                     Text(
-                                        "TTS Provider",
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                    )
-                                    listOf(AIProvider.OPENAI, AIProvider.ANTHROPIC).forEach { provider ->
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                        ) {
-                                            RadioButton(
-                                                selected = uiState.settings.ttsProviderType == provider,
-                                                onClick = { viewModel.updateTTSProviderType(provider) },
-                                            )
-                                            Text(
-                                                text = provider.displayName,
-                                                modifier = Modifier.padding(start = 8.dp),
-                                                fontSize = 14.sp,
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            // TTS Model Selection
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                colors =
-                                    CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surface,
-                                    ),
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    Text(
-                                        "TTS Model/Voice",
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Medium,
+                                        "OpenAI TTS",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSurface,
                                     )
                                     Text(
-                                        if (uiState.settings.ttsProviderType == AIProvider.OPENAI) {
-                                            "OpenAI TTS models: tts-1 (fast) or tts-1-hd (high quality)"
-                                        } else {
-                                            "Anthropic TTS model (when available)"
-                                        },
+                                        "Models: tts-1 (fast) or tts-1-hd (high quality)",
                                         fontSize = 12.sp,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                     )
                                     OutlinedTextField(
-                                        value = uiState.settings.ttsModel,
-                                        onValueChange = { viewModel.updateTTSModel(it) },
+                                        value = uiState.settings.ttsOpenAIModel,
+                                        onValueChange = { viewModel.updateTTSOpenAIModel(it) },
                                         modifier = Modifier.fillMaxWidth(),
-                                        label = { Text("Model/Voice ID") },
-                                        placeholder = {
-                                            Text(
-                                                if (uiState.settings.ttsProviderType ==
-                                                    AIProvider.OPENAI
-                                                ) {
-                                                    "e.g., tts-1 or tts-1-hd"
-                                                } else {
-                                                    "Enter model name"
-                                                },
-                                            )
-                                        },
+                                        label = { Text("Model") },
+                                        placeholder = { Text("e.g., tts-1 or tts-1-hd") },
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(8.dp),
+                                        colors =
+                                            OutlinedTextFieldDefaults.colors(
+                                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                            ),
+                                    )
+                                    OutlinedTextField(
+                                        value = uiState.settings.ttsOpenAIApiKey,
+                                        onValueChange = { viewModel.updateTTSOpenAIApiKey(it) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        label = { Text("API Key") },
+                                        placeholder = { Text("Enter OpenAI API key") },
                                         singleLine = true,
                                         shape = RoundedCornerShape(8.dp),
                                         colors =
@@ -793,8 +756,19 @@ fun SpeechTab(
                                     )
                                 }
                             }
+                        }
+                    }
+                    TTSProvider.GEMINI -> {
+                        Column(
+                            modifier = Modifier.padding(top = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            Text(
+                                "Configure your Gemini TTS settings. These are completely separate from your Text API configuration.",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
 
-                            // TTS API Key
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
@@ -805,26 +779,115 @@ fun SpeechTab(
                             ) {
                                 Column(
                                     modifier = Modifier.padding(12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
                                     Text(
-                                        "TTS API Key",
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Medium,
+                                        "Gemini TTS",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSurface,
                                     )
                                     Text(
-                                        "Enter your API key for ${uiState.settings.ttsProviderType.displayName} TTS. " +
-                                            "This is separate from your Text API key.",
+                                        "Model: e.g., gemini-2.5-flash-preview-tts\nVoice: e.g., Kore, Aoede, Charon, Fenrir",
                                         fontSize = 12.sp,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                     )
                                     OutlinedTextField(
-                                        value = uiState.settings.ttsApiKey,
-                                        onValueChange = { viewModel.updateTTSApiKey(it) },
+                                        value = uiState.settings.ttsGeminiModel,
+                                        onValueChange = { viewModel.updateTTSGeminiModel(it) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        label = { Text("Model") },
+                                        placeholder = { Text("e.g., gemini-2.5-flash-preview-tts") },
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(8.dp),
+                                        colors =
+                                            OutlinedTextFieldDefaults.colors(
+                                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                            ),
+                                    )
+                                    OutlinedTextField(
+                                        value = uiState.settings.ttsGeminiVoiceName,
+                                        onValueChange = { viewModel.updateTTSGeminiVoiceName(it) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        label = { Text("Voice Name") },
+                                        placeholder = { Text("e.g., Kore, Aoede, Charon, Fenrir") },
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(8.dp),
+                                        colors =
+                                            OutlinedTextFieldDefaults.colors(
+                                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                            ),
+                                    )
+                                    OutlinedTextField(
+                                        value = uiState.settings.ttsGeminiApiKey,
+                                        onValueChange = { viewModel.updateTTSGeminiApiKey(it) },
                                         modifier = Modifier.fillMaxWidth(),
                                         label = { Text("API Key") },
-                                        placeholder = { Text("Enter TTS API key") },
+                                        placeholder = { Text("Enter Gemini API key") },
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(8.dp),
+                                        colors =
+                                            OutlinedTextFieldDefaults.colors(
+                                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                            ),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    TTSProvider.ANTHROPIC -> {
+                        Column(
+                            modifier = Modifier.padding(top = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            Text(
+                                "Note: Anthropic TTS API is not yet publicly available. " +
+                                    "This option will be enabled when the API becomes available.",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors =
+                                    CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surface,
+                                    ),
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    Text(
+                                        "Anthropic TTS",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                    OutlinedTextField(
+                                        value = uiState.settings.ttsAnthropicModel,
+                                        onValueChange = { viewModel.updateTTSAnthropicModel(it) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        label = { Text("Model") },
+                                        placeholder = { Text("Enter model name") },
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(8.dp),
+                                        colors =
+                                            OutlinedTextFieldDefaults.colors(
+                                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                            ),
+                                    )
+                                    OutlinedTextField(
+                                        value = uiState.settings.ttsAnthropicApiKey,
+                                        onValueChange = { viewModel.updateTTSAnthropicApiKey(it) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        label = { Text("API Key") },
+                                        placeholder = { Text("Enter Anthropic API key") },
                                         singleLine = true,
                                         shape = RoundedCornerShape(8.dp),
                                         colors =

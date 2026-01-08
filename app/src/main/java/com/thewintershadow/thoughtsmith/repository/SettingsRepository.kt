@@ -59,9 +59,15 @@ class SettingsRepository(
     private val aiContextKey = stringPreferencesKey("ai_context")
     private val outputFormatKey = stringPreferencesKey("output_format")
     private val ttsProviderKey = stringPreferencesKey("tts_provider")
-    private val ttsProviderTypeKey = stringPreferencesKey("tts_provider_type")
-    private val ttsModelKey = stringPreferencesKey("tts_model")
-    private val ttsApiKeyKey = stringPreferencesKey("tts_api_key")
+
+    // Provider-specific TTS configuration keys
+    private val ttsOpenAIApiKeyKey = stringPreferencesKey("tts_openai_api_key")
+    private val ttsOpenAIModelKey = stringPreferencesKey("tts_openai_model")
+    private val ttsGeminiApiKeyKey = stringPreferencesKey("tts_gemini_api_key")
+    private val ttsGeminiModelKey = stringPreferencesKey("tts_gemini_model")
+    private val ttsGeminiVoiceNameKey = stringPreferencesKey("tts_gemini_voice_name")
+    private val ttsAnthropicApiKeyKey = stringPreferencesKey("tts_anthropic_api_key")
+    private val ttsAnthropicModelKey = stringPreferencesKey("tts_anthropic_model")
     private val awsAccessKeyKey = stringPreferencesKey("aws_access_key")
     private val awsSecretKeyKey = stringPreferencesKey("aws_secret_key")
     private val awsRegionKey = stringPreferencesKey("aws_region")
@@ -97,9 +103,13 @@ class SettingsRepository(
                         ?: "Format the journal entry as a clean markdown document with a title, date, " +
                         "and well-organized sections based on our conversation.",
                 ttsProvider = TTSProvider.valueOf(preferences[ttsProviderKey] ?: TTSProvider.LOCAL.name),
-                ttsProviderType = AIProvider.valueOf(preferences[ttsProviderTypeKey] ?: AIProvider.OPENAI.name),
-                ttsModel = preferences[ttsModelKey] ?: "tts-1",
-                ttsApiKey = preferences[ttsApiKeyKey] ?: "",
+                ttsOpenAIApiKey = preferences[ttsOpenAIApiKeyKey] ?: "",
+                ttsOpenAIModel = preferences[ttsOpenAIModelKey] ?: "tts-1",
+                ttsGeminiApiKey = preferences[ttsGeminiApiKeyKey] ?: "",
+                ttsGeminiModel = preferences[ttsGeminiModelKey] ?: "gemini-2.5-flash-preview-tts",
+                ttsGeminiVoiceName = preferences[ttsGeminiVoiceNameKey] ?: "Kore",
+                ttsAnthropicApiKey = preferences[ttsAnthropicApiKeyKey] ?: "",
+                ttsAnthropicModel = preferences[ttsAnthropicModelKey] ?: "",
                 awsAccessKey = preferences[awsAccessKeyKey] ?: "",
                 awsSecretKey = preferences[awsSecretKeyKey] ?: "",
                 awsRegion = preferences[awsRegionKey] ?: "us-east-1",
@@ -124,9 +134,13 @@ class SettingsRepository(
             preferences[aiContextKey] = settings.aiContext
             preferences[outputFormatKey] = settings.outputFormatInstructions
             preferences[ttsProviderKey] = settings.ttsProvider.name
-            preferences[ttsProviderTypeKey] = settings.ttsProviderType.name
-            preferences[ttsModelKey] = settings.ttsModel
-            preferences[ttsApiKeyKey] = settings.ttsApiKey
+            preferences[ttsOpenAIApiKeyKey] = settings.ttsOpenAIApiKey
+            preferences[ttsOpenAIModelKey] = settings.ttsOpenAIModel
+            preferences[ttsGeminiApiKeyKey] = settings.ttsGeminiApiKey
+            preferences[ttsGeminiModelKey] = settings.ttsGeminiModel
+            preferences[ttsGeminiVoiceNameKey] = settings.ttsGeminiVoiceName
+            preferences[ttsAnthropicApiKeyKey] = settings.ttsAnthropicApiKey
+            preferences[ttsAnthropicModelKey] = settings.ttsAnthropicModel
             preferences[awsAccessKeyKey] = settings.awsAccessKey
             preferences[awsSecretKeyKey] = settings.awsSecretKey
             preferences[awsRegionKey] = settings.awsRegion
