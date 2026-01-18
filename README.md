@@ -1,8 +1,8 @@
 # Thought Smith 🤔📝
 
-**An AI-Powered Journaling Android App**
+**An AI-Powered Journaling iOS App**
 
-Thought Smith is a modern Android application that combines the benefits of journaling with AI conversation to help users explore their thoughts and feelings. The app provides an interactive chat interface where users can discuss their day, thoughts, and experiences with AI, which then generates beautifully formatted journal entries.
+Thought Smith is a modern iOS application that combines the benefits of journaling with AI conversation to help users explore their thoughts and feelings. The app provides an interactive chat interface where users can discuss their day, thoughts, and experiences with AI, which then generates beautifully formatted journal entries.
 
 ## 📱 What This App Does
 
@@ -18,81 +18,80 @@ Thought Smith transforms journaling from a solitary activity into an interactive
 - **AI-Powered Conversations**: Chat with AI assistants from OpenAI, Google Gemini, or Anthropic Claude
 - **Multiple AI Models**: Support for various models including GPT-4o, Gemini 1.5 Pro, Claude 4.5, and more
 - **Automated Journal Generation**: AI creates formatted journal entries from conversations
-- **File Export**: Save journal entries as Markdown files
+- **File Export**: Save journal entries as Markdown files using iOS document picker
 - **Customizable AI Context**: Configure how the AI responds and behaves
-- **Clean Material Design 3 UI**: Modern, intuitive interface following Android design guidelines
+- **Native SwiftUI Interface**: Modern, intuitive interface following iOS design guidelines
+- **Speech-to-Text & Text-to-Speech**: Voice input and output support using native iOS APIs
 - **Comprehensive Logging**: Built-in logging system for debugging and monitoring
 
 ## 🏗️ Architecture Overview
 
-The app follows modern Android development best practices with a clean architecture:
+The app follows modern iOS development best practices with a clean architecture:
 
 ```
 📦 Thought Smith
-├── 🎯 UI Layer (Jetpack Compose)
-│   ├── Screens (Chat, Settings, Logs)
-│   ├── Navigation (NavGraph)
-│   └── Theme (Material Design 3)
+├── 🎯 UI Layer (SwiftUI)
+│   ├── Views (ChatScreen, SettingsScreen, LogsScreen)
+│   ├── Navigation (NavigationStack)
+│   └── Native iOS Design
 ├── 🧠 ViewModel Layer (MVVM Pattern)
 │   ├── ChatViewModel (Chat logic)
 │   └── SettingsViewModel (Settings management)
-├── 🗄️ Repository Layer (Data Management)
+├── 🗄️ Services Layer (Data Management)
 │   ├── AIService (AI API communication)
 │   ├── SettingsRepository (User preferences)
-│   └── FileStorageService (File operations)
+│   ├── FileStorageService (File operations)
+│   └── SpeechService (Speech recognition & synthesis)
 └── 📊 Data Layer (Models & Storage)
     ├── Data Models (Message, AppSettings, AIProvider)
-    ├── SharedPreferences (Settings storage)
+    ├── UserDefaults (Settings storage)
     └── File System (Journal export)
 ```
 
 ## 📁 Project Structure
 
 ### Core Application Files
-- **`MainActivity.kt`** - App entry point, sets up Jetpack Compose and navigation
-- **`AndroidManifest.xml`** - App configuration, permissions, and metadata
+- **`ThoughtSmithApp.swift`** - App entry point using SwiftUI App lifecycle
+- **`ContentView.swift`** - Main navigation and app structure
+- **`Info.plist`** - App configuration, permissions, and metadata
 
-### Data Layer (`/data/`)
-- **`Message.kt`** - Data model for chat messages
-- **`AIProvider.kt`** - Enum and models for AI providers and models
-- **`AppSettings.kt`** - Data model for user settings and preferences
+### Data Layer (`Models/`)
+- **`Message.swift`** - Data model for chat messages
+- **`AIProvider.swift`** - Enum and models for AI providers and models
+- **`AppSettings.swift`** - Data model for user settings and preferences
+- **`TTSProvider.swift`** - Text-to-speech provider definitions
 
-### Repository Layer (`/repository/`)
-- **`AIService.kt`** - Handles communication with AI APIs (OpenAI, Gemini, Anthropic)
-- **`SettingsRepository.kt`** - Manages user settings persistence
-- **`FileStorageService.kt`** - Handles file operations for journal export
+### Services Layer (`Services/`)
+- **`AIService.swift`** - Handles communication with AI APIs (OpenAI, Gemini, Anthropic)
+- **`SettingsRepository.swift`** - Manages user settings persistence using UserDefaults
+- **`FileStorageService.swift`** - Handles file operations for journal export
+- **`SpeechService.swift`** - Speech-to-text and text-to-speech using AVFoundation
 
-### ViewModel Layer (`/viewmodel/`)
-- **`ChatViewModel.kt`** - Manages chat state and AI interactions
-- **`SettingsViewModel.kt`** - Manages settings UI and persistence
-- **`ViewModelFactory.kt`** - Factory for creating ViewModels with dependencies
+### ViewModel Layer (`ViewModels/`)
+- **`ChatViewModel.swift`** - Manages chat state and AI interactions
+- **`SettingsViewModel.swift`** - Manages settings UI and persistence
 
-### UI Layer (`/ui/`)
-- **`/screens/`**
-  - **`ChatScreen.kt`** - Main chat interface
-  - **`SettingsScreen.kt`** - Configuration and preferences
-  - **`LogsScreen.kt`** - App logs and debugging info
-- **`/theme/`** - Material Design 3 theming (Colors, Typography, Theme)
+### UI Layer (`Views/`)
+- **`ChatScreen.swift`** - Main chat interface
+- **`SettingsScreen.swift`** - Configuration and preferences
+- **`LogsScreen.swift`** - App logs and debugging info
 
-### Navigation (`/navigation/`)
-- **`NavGraph.kt`** - App navigation setup using Jetpack Navigation Compose
-
-### Utilities (`/util/`)
-- **`Logger.kt`** - Centralized logging system for debugging and monitoring
+### Utilities (`Utilities/`)
+- **`Logger.swift`** - Centralized logging system for debugging and monitoring
 
 ## 🔑 Setup and Configuration
 
 ### Prerequisites
-- Android Studio Arctic Fox or later
-- Android SDK API 24+ (Android 7.0) minimum
-- Kotlin 1.8+
+- Xcode 15.0 or later
+- iOS 16.0+ deployment target
+- Swift 5.9+
 - AI API keys from supported providers
 
 ### Getting Started
 1. Clone the repository
-2. Open in Android Studio
-3. Let Gradle sync dependencies
-4. Run the app on an emulator or device
+2. Open `ThoughtSmith.xcodeproj` in Xcode
+3. Select your development team in Signing & Capabilities
+4. Build and run the app on a simulator or device
 5. Configure AI API keys in Settings
 
 ### API Keys Configuration
@@ -101,80 +100,20 @@ The app requires API keys from AI providers. Configure these in the Settings scr
 - **Google Gemini**: Get API key from makersuite.google.com
 - **Anthropic Claude**: Get API key from console.anthropic.com
 
-## 📚 Documentation
-
-### API Documentation
-
-This project uses [Dokka](https://kotlinlang.org/docs/dokka-introduction.html) to automatically generate API documentation from code comments and KDoc.
-
-#### Generating Documentation Locally
-
-To generate documentation locally, run:
-
-```bash
-# Generate HTML documentation
-./gradlew dokkaHtml
-
-# Generate Javadoc format
-./gradlew dokkaJavadoc
-
-# Generate GitHub Flavored Markdown
-./gradlew dokkaGfm
-```
-
-The generated documentation will be available in:
-- HTML: `app/build/dokka/html/`
-- Javadoc: `app/build/dokka/javadoc/`
-- GFM: `app/build/dokka/gfm/`
-
-#### Automatic Documentation Publishing
-
-Documentation is automatically generated and published to GitHub Pages whenever changes are pushed to the `main` branch. The documentation is available at:
-
-**https://[your-username].github.io/thought-smith/**
-
-The GitHub Actions workflow (`.github/workflows/dokka.yml`) handles:
-1. Building the project
-2. Generating Dokka HTML documentation
-3. Publishing to GitHub Pages
-
-#### Writing Documentation
-
-Use KDoc comments to document your code:
-
-```kotlin
-/**
- * Service for handling speech-to-text and text-to-speech functionality.
- *
- * This service provides:
- * - Speech-to-text conversion using Android's SpeechRecognizer
- * - Text-to-speech conversion using Android's TextToSpeech engine
- *
- * @param context Android context for accessing speech services
- * @see SpeechRecognizer
- * @see TextToSpeech
- */
-class SpeechService(private val context: Context) {
-    // ...
-}
-```
-
 ## 🔧 Technical Details
 
 ### Dependencies
-- **Jetpack Compose** - Modern UI toolkit
-- **Navigation Compose** - Type-safe navigation
-- **ViewModel & LiveData** - MVVM architecture
-- **Coroutines** - Asynchronous programming
-- **Gson** - JSON parsing
-- **OkHttp** - HTTP client for API calls
-- **Material Design 3** - UI components and theming
+- **SwiftUI** - Modern declarative UI framework
+- **Combine** - Reactive programming framework
+- **AVFoundation** - Speech recognition and synthesis
+- **URLSession** - HTTP client for API calls
+- **UserDefaults** - Settings persistence
 
 ### Permissions
-- `INTERNET` - Required for AI API communication
-- `READ_EXTERNAL_STORAGE` - For reading files
-- `WRITE_EXTERNAL_STORAGE` - For saving journal entries
-- `MANAGE_EXTERNAL_STORAGE` - Enhanced file access on newer Android versions
+The app requires the following permissions (configured in Info.plist):
+- **Speech Recognition** (`NSSpeechRecognitionUsageDescription`) - For voice input
+- **Microphone** (`NSMicrophoneUsageDescription`) - For recording voice input
+- **Network Access** - For AI API communication
 
 ### Supported AI Models
 
@@ -192,25 +131,40 @@ class SpeechService(private val context: Context) {
 - Claude 4.1, Claude 4
 - Claude 3.5 Haiku, Claude 3 Haiku
 
+### Text-to-Speech Providers
+- **Local (Device)**: Uses iOS AVSpeechSynthesizer (free, offline)
+- **OpenAI TTS**: High-quality natural voices (requires API key)
+- **Gemini TTS**: Google's TTS API (requires API key)
+- **Anthropic TTS**: Placeholder for future API support
+- **AWS Polly**: Amazon's TTS service (requires AWS credentials)
+
 ## 🎨 User Experience
 
 ### Chat Interface
-- Clean, conversation-style interface
+- Clean, conversation-style interface following iOS design patterns
 - Real-time message exchange with AI
 - Automatic scrolling to latest messages
 - Loading indicators during AI responses
+- Native iOS navigation and gestures
 
 ### Journal Generation
 - One-tap journal generation from conversations
 - AI creates structured, formatted entries
-- Export to Markdown files
+- Export to Markdown files using iOS document picker
 - Customizable formatting instructions
 
 ### Settings Management
 - Easy AI provider and model selection
-- API key configuration
+- API key configuration with secure text fields
 - Customizable AI behavior and context
 - Output formatting preferences
+- TTS provider configuration
+
+### Speech Features
+- Voice input using iOS speech recognition
+- Voice output using iOS text-to-speech or remote TTS APIs
+- Toggle between text and voice modes
+- Real-time speech recognition feedback
 
 ## 🐛 Debugging and Logging
 
@@ -220,26 +174,27 @@ The app includes comprehensive logging through the `AppLogger` utility:
 - **Error**: Exceptions and failures
 - **Debug**: Detailed debugging information
 
-View logs in the Logs screen within the app.
+View logs in the Logs screen within the app. Logs are stored in memory (up to 1000 entries) and can be cleared.
 
 ## 🔒 Privacy and Security
 
-- API keys are stored locally on device
+- API keys are stored locally on device using UserDefaults
 - Conversations are not stored permanently unless exported
 - No data is shared with third parties beyond chosen AI providers
 - Users have full control over their data and exports
+- Speech recognition data is processed locally when possible
 
 ## 🚀 Future Enhancements
 
 Potential areas for expansion:
-- Cloud backup and sync
+- Cloud backup and sync (iCloud integration)
 - Multiple conversation threads
 - Journal templates and prompts
 - Export to additional formats (PDF, DOCX)
 - Conversation history persistence
 - Customizable AI personalities
-- Voice-to-text integration
-- Dark mode theming
+- Widget support for quick journaling
+- Shortcuts app integration
 
 ## 📄 License
 
@@ -260,3 +215,22 @@ For issues or questions:
 - Ensure API keys are properly configured
 - Verify internet connectivity for AI features
 - Check AI provider service status if requests fail
+- Ensure microphone and speech recognition permissions are granted
+
+## 🛠️ Building the Project
+
+### Requirements
+- macOS 13.0 or later
+- Xcode 15.0 or later
+- iOS 16.0+ deployment target
+
+### Build Steps
+1. Open `ThoughtSmith.xcodeproj` in Xcode
+2. Select a target device or simulator
+3. Configure your development team in Signing & Capabilities
+4. Build and run (⌘R)
+
+### Project Configuration
+- Minimum iOS Version: 16.0
+- Swift Language Version: Swift 5.9
+- Bundle Identifier: `com.thewintershadow.thoughtsmith` (configurable)
