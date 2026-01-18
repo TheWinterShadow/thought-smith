@@ -159,7 +159,7 @@ struct TextAPITab: View {
                 }
             }
             
-            Section("API Key") {
+            Section {
                 TextField("Enter your API key", text: Binding(
                     get: { viewModel.settings.apiKey },
                     set: { viewModel.updateApiKey($0) }
@@ -167,6 +167,8 @@ struct TextAPITab: View {
                 .textContentType(.password)
                 .autocapitalization(.none)
                 .autocorrectionDisabled()
+            } header: {
+                Text("API Key")
             } footer: {
                 Text("Enter your API key for the selected AI provider.")
             }
@@ -193,7 +195,7 @@ struct SpeechTab: View {
     
     var body: some View {
         Form {
-            Section("Text-to-Speech Provider") {
+            Section {
                 ForEach(TTSProvider.allCases, id: \.self) { provider in
                     HStack {
                         Text(provider.displayName)
@@ -208,6 +210,8 @@ struct SpeechTab: View {
                         viewModel.updateTTSProvider(provider)
                     }
                 }
+            } header: {
+                Text("Text-to-Speech Provider")
             } footer: {
                 Text("Choose your preferred TTS provider. Local is free and offline. Remote options provide more natural voices.")
             }

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+   version = "1.0">
+   <FileRef
+      location = "self:">
+   </FileRef>
+   <FileRef
+      location = "group:thoughtsmithTests.swift">
+   </FileRef>
+   <FileRef
+      location = "group:ViewModelTests.swift">
+   </FileRef>
+   <FileRef
+      location = "group:ServiceTests.swift">
+   </FileRef>
+   <FileRef
+      location = "group:.swift">
+   </FileRef>
+   <FileRef
+      location = "group:TEST_SETUP_INSTRUCTIONS.md">
+   </FileRef>
+   <FileRef
+      location = "group:TEST_README.md">
+   </FileRef>
+</Workspace>

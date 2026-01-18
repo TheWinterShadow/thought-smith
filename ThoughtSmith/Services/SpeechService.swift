@@ -10,6 +10,7 @@ import Foundation
 import AVFoundation
 import Speech
 import AVFAudio
+import Combine
 
 /// Service for handling speech-to-text and text-to-speech functionality.
 @MainActor

@@ -8,22 +8,26 @@
 
 import Foundation
 
-/// Enum representing available Text-to-Speech providers.
-enum TTSProvider: String, Codable, CaseIterable {
-    case local = "LOCAL"
-    case openAI = "OPENAI"
-    case gemini = "GEMINI"
-    case anthropic = "ANTHROPIC"
-    case awsPolly = "AWS_POLLY"
+/// Enumeration of supported text-to-speech providers.
+enum TTSProvider: String, Codable, CaseIterable, Hashable {
+    case local
+    case openAI
+    case gemini
+    case anthropic
+    case awsPolly
     
     var displayName: String {
         switch self {
-        case .local: return "Local (Device)"
-        case .openAI: return "OpenAI TTS"
-        case .gemini: return "Gemini TTS"
-        case .anthropic: return "Anthropic TTS"
-        case .awsPolly: return "AWS Polly"
+        case .local:
+            return "Local (iOS)"
+        case .openAI:
+            return "OpenAI TTS"
+        case .gemini:
+            return "Google Gemini TTS"
+        case .anthropic:
+            return "Anthropic TTS"
+        case .awsPolly:
+            return "AWS Polly"
         }
     }
 }
-

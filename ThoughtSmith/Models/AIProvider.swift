@@ -9,26 +9,39 @@
 import Foundation
 
 /// Enumeration of supported AI service providers.
-enum AIProvider: String, Codable, CaseIterable {
-    case openAI = "OPENAI"
-    case gemini = "GEMINI"
-    case anthropic = "ANTHROPIC"
+/// Enumeration of supported AI providers.
+enum AIProvider: String, Codable, CaseIterable, Hashable {
+    case openAI
+    case gemini
+    case anthropic
     
     var displayName: String {
         switch self {
-        case .openAI: return "OpenAI"
-        case .gemini: return "Google Gemini"
-        case .anthropic: return "Anthropic Claude"
+        case .openAI:
+            return "OpenAI"
+        case .gemini:
+            return "Google Gemini"
+        case .anthropic:
+            return "Anthropic"
         }
     }
 }
 
 /// Represents a specific AI model from a provider.
 struct AIModel: Identifiable, Hashable {
-    let id = UUID()
+    var id: String { modelName }
     let provider: AIProvider
     let modelName: String
     let displayName: String
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(provider)
+        hasher.combine(modelName)
+    }
+    
+    static func == (lhs: AIModel, rhs: AIModel) -> Bool {
+        lhs.provider == rhs.provider && lhs.modelName == rhs.modelName
+    }
 }
 
 /// Container for all supported AI models organized by provider.
