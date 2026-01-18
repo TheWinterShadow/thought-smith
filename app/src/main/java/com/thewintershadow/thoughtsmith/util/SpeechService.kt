@@ -303,7 +303,8 @@ class SpeechService(
         model: String = "tts-1",
     ) {
         if (apiKey.isBlank()) {
-            AppLogger.warning("SpeechService", "API key required for OpenAI TTS")
+            AppLogger.warning("SpeechService", "API key required for OpenAI TTS, falling back to local TTS")
+            speakLocal(text, TextToSpeech.QUEUE_FLUSH)
             return
         }
 
@@ -317,10 +318,12 @@ class SpeechService(
                 playAudioData(audioData)
             } else {
                 val error = audioResult.exceptionOrNull()
-                AppLogger.error("SpeechService", "Failed to generate OpenAI TTS", error)
+                AppLogger.error("SpeechService", "Failed to generate OpenAI TTS, falling back to local TTS", error)
+                speakLocal(text, TextToSpeech.QUEUE_FLUSH)
             }
         } catch (e: Exception) {
-            AppLogger.error("SpeechService", "Exception while generating OpenAI TTS", e)
+            AppLogger.error("SpeechService", "Exception while generating OpenAI TTS, falling back to local TTS", e)
+            speakLocal(text, TextToSpeech.QUEUE_FLUSH)
         }
     }
 
@@ -334,7 +337,8 @@ class SpeechService(
         voiceName: String = "Kore",
     ) {
         if (apiKey.isBlank()) {
-            AppLogger.warning("SpeechService", "API key required for Gemini TTS")
+            AppLogger.warning("SpeechService", "API key required for Gemini TTS, falling back to local TTS")
+            speakLocal(text, TextToSpeech.QUEUE_FLUSH)
             return
         }
 
@@ -352,10 +356,12 @@ class SpeechService(
                 playAudioData(audioData, isPcmFormat = true)
             } else {
                 val error = audioResult.exceptionOrNull()
-                AppLogger.error("SpeechService", "Failed to generate Gemini TTS", error)
+                AppLogger.error("SpeechService", "Failed to generate Gemini TTS, falling back to local TTS", error)
+                speakLocal(text, TextToSpeech.QUEUE_FLUSH)
             }
         } catch (e: Exception) {
-            AppLogger.error("SpeechService", "Exception while generating Gemini TTS", e)
+            AppLogger.error("SpeechService", "Exception while generating Gemini TTS, falling back to local TTS", e)
+            speakLocal(text, TextToSpeech.QUEUE_FLUSH)
         }
     }
 
@@ -367,7 +373,8 @@ class SpeechService(
         apiKey: String,
     ) {
         if (apiKey.isBlank()) {
-            AppLogger.warning("SpeechService", "API key required for Anthropic TTS")
+            AppLogger.warning("SpeechService", "API key required for Anthropic TTS, falling back to local TTS")
+            speakLocal(text, TextToSpeech.QUEUE_FLUSH)
             return
         }
 
@@ -381,10 +388,12 @@ class SpeechService(
                 playAudioData(audioData)
             } else {
                 val error = audioResult.exceptionOrNull()
-                AppLogger.error("SpeechService", "Failed to generate Anthropic TTS", error)
+                AppLogger.error("SpeechService", "Failed to generate Anthropic TTS, falling back to local TTS", error)
+                speakLocal(text, TextToSpeech.QUEUE_FLUSH)
             }
         } catch (e: Exception) {
-            AppLogger.error("SpeechService", "Exception while generating Anthropic TTS", e)
+            AppLogger.error("SpeechService", "Exception while generating Anthropic TTS, falling back to local TTS", e)
+            speakLocal(text, TextToSpeech.QUEUE_FLUSH)
         }
     }
 
@@ -398,7 +407,8 @@ class SpeechService(
         region: String,
     ) {
         if (accessKey.isBlank() || secretKey.isBlank()) {
-            AppLogger.warning("SpeechService", "AWS credentials required for AWS Polly TTS")
+            AppLogger.warning("SpeechService", "AWS credentials required for AWS Polly TTS, falling back to local TTS")
+            speakLocal(text, TextToSpeech.QUEUE_FLUSH)
             return
         }
 
@@ -412,10 +422,12 @@ class SpeechService(
                 playAudioData(audioData)
             } else {
                 val error = audioResult.exceptionOrNull()
-                AppLogger.error("SpeechService", "Failed to generate AWS Polly TTS", error)
+                AppLogger.error("SpeechService", "Failed to generate AWS Polly TTS, falling back to local TTS", error)
+                speakLocal(text, TextToSpeech.QUEUE_FLUSH)
             }
         } catch (e: Exception) {
-            AppLogger.error("SpeechService", "Exception while generating AWS Polly TTS", e)
+            AppLogger.error("SpeechService", "Exception while generating AWS Polly TTS, falling back to local TTS", e)
+            speakLocal(text, TextToSpeech.QUEUE_FLUSH)
         }
     }
 

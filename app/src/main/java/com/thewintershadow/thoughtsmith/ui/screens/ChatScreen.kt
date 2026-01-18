@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.VolumeMute
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
@@ -110,7 +111,7 @@ fun ChatScreen(
     val context = LocalContext.current
     val fileStorageService = remember { FileStorageService(context) }
 
-    // File picker launcher
+    // File picker launcher for journal entries
     val filePickerLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.CreateDocument("text/markdown"),
@@ -130,6 +131,29 @@ fun ChatScreen(
             } else if (uri == null && uiState.isSaving) {
                 // User cancelled file picker
                 viewModel.onFileSaved(success = false)
+            }
+        }
+
+    // File picker launcher for chat transcript
+    val transcriptFilePickerLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.CreateDocument("text/plain"),
+        ) { uri ->
+            if (uri != null && uiState.chatTranscript != null) {
+                coroutineScope.launch {
+                    val result =
+                        fileStorageService.saveJournalEntryToUri(
+                            uri = uri,
+                            content = uiState.chatTranscript!!,
+                        )
+                    viewModel.onTranscriptSaved(
+                        success = result.isSuccess,
+                        filePath = result.getOrNull(),
+                    )
+                }
+            } else if (uri == null && uiState.isSavingTranscript) {
+                // User cancelled file picker
+                viewModel.onTranscriptSaved(success = false)
             }
         }
 
@@ -158,6 +182,18 @@ fun ChatScreen(
             val date = Date(timestamp)
             val fileName = "journal_entry_${dateFormat.format(date)}_${timeFormat.format(date)}.md"
             filePickerLauncher.launch(fileName)
+        }
+    }
+
+    // Show file picker when saving transcript
+    LaunchedEffect(uiState.isSavingTranscript) {
+        if (uiState.isSavingTranscript && uiState.chatTranscript != null) {
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val timeFormat = SimpleDateFormat("HH-mm-ss", Locale.getDefault())
+            val timestamp = System.currentTimeMillis()
+            val date = Date(timestamp)
+            val fileName = "chat_transcript_${dateFormat.format(date)}_${timeFormat.format(date)}.txt"
+            transcriptFilePickerLauncher.launch(fileName)
         }
     }
 
@@ -221,6 +257,29 @@ fun ChatScreen(
                                         },
                                 )
                             }
+                        }
+                    }
+                    Box {
+                        IconButton(
+                            onClick = { viewModel.saveChatTranscript() },
+                            enabled =
+                                uiState.messages.isNotEmpty() &&
+                                    !uiState.isSavingTranscript,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Download,
+                                contentDescription = "Save Chat Transcript",
+                                tint =
+                                    if (uiState.messages.isNotEmpty() &&
+                                        !uiState.isSavingTranscript
+                                    ) {
+                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme
+                                            .onPrimaryContainer
+                                            .copy(alpha = 0.5f)
+                                    },
+                            )
                         }
                     }
                     IconButton(onClick = onNavigateToSettings) {

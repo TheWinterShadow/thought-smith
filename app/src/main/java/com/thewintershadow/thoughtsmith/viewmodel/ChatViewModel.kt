@@ -46,6 +46,8 @@ data class ChatUiState(
     val outputMode: Boolean = false, // false = text, true = speech
     val isListening: Boolean = false,
     val isSpeaking: Boolean = false,
+    val isSavingTranscript: Boolean = false,
+    val chatTranscript: String? = null,
 )
 
 /**
@@ -411,6 +413,93 @@ class ChatViewModel(
      */
     fun clearSaveSuccess() {
         _uiState.value = _uiState.value.copy(saveSuccess = null)
+    }
+
+    /**
+     * Save the current chat transcript to a file.
+     *
+     * This function formats the conversation as a simple transcript and prepares it for saving.
+     * The transcript includes all messages in chronological order with clear labels for user and AI messages.
+     *
+     * Process:
+     * 1. Validates there are messages and no operation is in progress
+     * 2. Formats all messages as a simple transcript
+     * 3. Prepares the transcript for file saving
+     */
+    fun saveChatTranscript() {
+        // Prevent duplicate operations
+        if (_uiState.value.messages.isEmpty() || _uiState.value.isSavingTranscript) {
+            return
+        }
+
+        AppLogger.info("ChatViewModel", "Preparing chat transcript for saving")
+        _uiState.value = _uiState.value.copy(isSavingTranscript = true, error = null)
+
+        viewModelScope.launch {
+            try {
+                // Format all messages as a simple transcript
+                val transcript = buildString {
+                    appendLine("Chat Transcript")
+                    appendLine("=".repeat(50))
+                    appendLine()
+
+                    _uiState.value.messages.forEach { message ->
+                        val sender = if (message.isUser) "You" else "AI"
+                        val timestamp = java.text.SimpleDateFormat(
+                            "yyyy-MM-dd HH:mm:ss",
+                            java.util.Locale.getDefault(),
+                        ).format(java.util.Date(message.timestamp))
+                        appendLine("[$timestamp] $sender:")
+                        appendLine(message.content)
+                        appendLine()
+                    }
+                }
+
+                AppLogger.info("ChatViewModel", "Chat transcript prepared successfully")
+                _uiState.value =
+                    _uiState.value.copy(
+                        isSavingTranscript = true,
+                        chatTranscript = transcript,
+                    )
+            } catch (e: Exception) {
+                AppLogger.error("ChatViewModel", "Exception while preparing transcript", e)
+                _uiState.value =
+                    _uiState.value.copy(
+                        isSavingTranscript = false,
+                        chatTranscript = null,
+                        error = e.message ?: "Failed to prepare transcript",
+                    )
+            }
+        }
+    }
+
+    /**
+     * Handle the result of a transcript save operation.
+     *
+     * @param success True if the file was saved successfully, false if failed or cancelled
+     * @param filePath Optional path where the file was saved
+     */
+    fun onTranscriptSaved(
+        success: Boolean,
+        filePath: String? = null,
+    ) {
+        if (success) {
+            AppLogger.info("ChatViewModel", "Chat transcript saved successfully")
+            _uiState.value =
+                _uiState.value.copy(
+                    isSavingTranscript = false,
+                    chatTranscript = null,
+                    saveSuccess = filePath?.let { "Chat transcript saved to: $it" } ?: "Chat transcript saved successfully",
+                )
+        } else {
+            AppLogger.error("ChatViewModel", "Failed to save chat transcript or cancelled", null)
+            _uiState.value =
+                _uiState.value.copy(
+                    isSavingTranscript = false,
+                    chatTranscript = null,
+                    error = null, // Don't show error if user cancelled
+                )
+        }
     }
 
     /**
