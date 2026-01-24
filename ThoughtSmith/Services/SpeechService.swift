@@ -42,8 +42,13 @@ class SpeechService: NSObject, ObservableObject {
     
     /// Check if speech recognition is available on this device.
     func isSpeechRecognitionAvailable() -> Bool {
+        #if targetEnvironment(simulator)
+        // In simulator, always return true since we're using test mode
+        return true
+        #else
         guard let recognizer = speechRecognizer else { return false }
         return recognizer.isAvailable
+        #endif
     }
     
     /// Request speech recognition authorization.
@@ -57,6 +62,35 @@ class SpeechService: NSObject, ObservableObject {
     
     /// Start listening for speech input and return recognized text.
     func startListening() async throws -> String {
+        #if targetEnvironment(simulator)
+        // In simulator, show an alert and return test text after a delay
+        AppLogger.shared.warning("SpeechService", "🧪 SIMULATOR MODE: Using test speech input (real mic not available)")
+        
+        isListening = true
+        
+        // Simulate "listening" for 2 seconds
+        AppLogger.shared.info("SpeechService", "Simulating listening for 2 seconds...")
+        try? await Task.sleep(nanoseconds: 2_000_000_000)
+        
+        isListening = false
+        
+        // Return test text
+        let testPhrases = [
+            "Today was a great day. I accomplished a lot and feel proud of myself.",
+            "I'm feeling stressed about work, but I'm trying to stay positive.",
+            "Had a wonderful time with friends today. Grateful for good company.",
+            "Feeling overwhelmed with everything going on, need to take a break.",
+            "Made progress on my goals today. Small steps count!"
+        ]
+        
+        let selectedPhrase = testPhrases.randomElement() ?? testPhrases[0]
+        AppLogger.shared.info("SpeechService", "Returning test phrase: \(selectedPhrase)")
+        
+        return selectedPhrase
+        #else
+        // Real device implementation
+        AppLogger.shared.info("SpeechService", "🎤 DEVICE MODE: Using real speech recognition")
+        
         guard isSpeechRecognitionAvailable() else {
             throw SpeechServiceError.notAvailable
         }
@@ -127,6 +161,7 @@ class SpeechService: NSObject, ObservableObject {
                 continuation.resume(throwing: error)
             }
         }
+        #endif
     }
     
     /// Stop listening for speech input.
@@ -178,7 +213,11 @@ class SpeechService: NSObject, ObservableObject {
     /// Speak using local iOS TTS engine.
     private func speakLocal(_ text: String) {
         let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: Locale.current.languageCode ?? "en-US")
+        if #available(iOS 16, *) {
+            utterance.voice = AVSpeechSynthesisVoice(language: Locale.current.language.languageCode?.identifier ?? "en-US")
+        } else {
+            utterance.voice = AVSpeechSynthesisVoice(language: Locale.current.languageCode ?? "en-US")
+        }
         utterance.rate = 0.5
         
         speechSynthesizer.delegate = self

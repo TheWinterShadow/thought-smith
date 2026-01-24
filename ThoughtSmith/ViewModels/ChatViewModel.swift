@@ -146,6 +146,8 @@ class ChatViewModel: ObservableObject {
                 formattedSummary = formattedContent
                 isGeneratingSummary = false
                 
+                AppLogger.shared.info("ChatViewModel", "Summary length: \(formattedContent.count) characters")
+                
             } catch {
                 AppLogger.shared.error("ChatViewModel", "Failed to generate formatted summary", error: error)
                 self.error = "Failed to generate summary: \(error.localizedDescription)"
@@ -157,27 +159,33 @@ class ChatViewModel: ObservableObject {
     /// Accept the generated journal summary and prepare for file save.
     func acceptSummaryAndSave(_ formattedContent: String) {
         formattedSummary = formattedContent
-        isSaving = true
+        // Delay setting isSaving to allow the sheet to dismiss first
+        Task {
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds - give sheet time to fully dismiss
+            isSaving = true
+        }
     }
     
     /// Reject the generated journal summary and return to normal state.
     func rejectSummary() {
         formattedSummary = nil
+        isGeneratingSummary = false
+        isSaving = false
     }
     
     /// Handle the result of a file save operation.
     func onFileSaved(success: Bool, filePath: String? = nil) {
+        AppLogger.shared.info("ChatViewModel", "onFileSaved called - success: \(success), path: \(filePath ?? "nil")")
         if success {
             AppLogger.shared.info("ChatViewModel", "Journal entry saved successfully")
-            isSaving = false
-            formattedSummary = nil
             saveSuccess = filePath != nil ? "Journal entry saved to: \(filePath!)" : "Journal entry saved successfully"
         } else {
             AppLogger.shared.error("ChatViewModel", "Failed to save journal entry or cancelled", error: nil)
-            isSaving = false
-            formattedSummary = nil
-            error = nil
+            // Don't set error on cancel, just clear state
         }
+        // Always reset state after file save attempt
+        isSaving = false
+        formattedSummary = nil
     }
     
     /// Clear the entire chat conversation and start fresh.
@@ -208,25 +216,31 @@ class ChatViewModel: ObservableObject {
         guard !messages.isEmpty, !isSavingTranscript else { return }
         
         AppLogger.shared.info("ChatViewModel", "Preparing chat transcript for saving")
-        isSavingTranscript = true
         error = nil
         
+        // Generate transcript synchronously since it's a simple operation
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        
+        var transcript = "Chat Transcript\n"
+        transcript += String(repeating: "=", count: 50) + "\n\n"
+        
+        for message in messages {
+            let sender = message.isUser ? "You" : "AI"
+            let timestamp = formatter.string(from: message.timestamp)
+            transcript += "[\(timestamp)] \(sender):\n"
+            transcript += message.content + "\n\n"
+        }
+        
+        AppLogger.shared.info("ChatViewModel", "Chat transcript prepared successfully - length: \(transcript.count)")
+        
+        // Set the transcript content FIRST, then trigger the save
+        chatTranscript = transcript
+        
+        // Small delay to ensure the binding updates
         Task {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-            
-            var transcript = "Chat Transcript\n"
-            transcript += String(repeating: "=", count: 50) + "\n\n"
-            
-            for message in messages {
-                let sender = message.isUser ? "You" : "AI"
-                let timestamp = formatter.string(from: message.timestamp)
-                transcript += "[\(timestamp)] \(sender):\n"
-                transcript += message.content + "\n\n"
-            }
-            
-            AppLogger.shared.info("ChatViewModel", "Chat transcript prepared successfully")
-            chatTranscript = transcript
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            isSavingTranscript = true
         }
     }
     
@@ -234,15 +248,14 @@ class ChatViewModel: ObservableObject {
     func onTranscriptSaved(success: Bool, filePath: String? = nil) {
         if success {
             AppLogger.shared.info("ChatViewModel", "Chat transcript saved successfully")
-            isSavingTranscript = false
-            chatTranscript = nil
             saveSuccess = filePath != nil ? "Chat transcript saved to: \(filePath!)" : "Chat transcript saved successfully"
         } else {
             AppLogger.shared.error("ChatViewModel", "Failed to save chat transcript or cancelled", error: nil)
-            isSavingTranscript = false
-            chatTranscript = nil
-            error = nil
+            // Don't set error on cancel, just clear state
         }
+        // Always reset state after file save attempt
+        isSavingTranscript = false
+        chatTranscript = nil
     }
     
     /// Toggle between text and speech input mode.
@@ -269,12 +282,16 @@ class ChatViewModel: ObservableObject {
     func startListening() {
         guard !isListening, !isLoading else { return }
         
+        #if targetEnvironment(simulator)
+        AppLogger.shared.info("ChatViewModel", "Starting speech recognition (SIMULATOR TEST MODE)")
+        #else
         guard speechService.isSpeechRecognitionAvailable() else {
             error = "Speech recognition is not available on this device"
             return
         }
-        
         AppLogger.shared.info("ChatViewModel", "Starting speech recognition")
+        #endif
+        
         isListening = true
         error = nil
         

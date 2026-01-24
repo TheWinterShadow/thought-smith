@@ -14,6 +14,13 @@ struct ChatScreen: View {
     @EnvironmentObject private var navigationState: NavigationState
     @State private var messageText = ""
     @State private var showingSummaryPreview = false
+    @State private var showingFileExporter = false
+    @State private var showingShareSheet = false
+    @State private var documentToExport: TextDocument?
+    @State private var contentToShare: String?
+    @State private var showingHelp = false
+    @AppStorage("hasSeenWelcome") private var hasSeenWelcome = false
+    @State private var showingWelcome = false
     @FocusState private var isTextFieldFocused: Bool
     
     var body: some View {
@@ -85,25 +92,52 @@ struct ChatScreen: View {
                     }
                     .disabled(viewModel.messages.count <= 1)
                     
-                    Button(action: { viewModel.saveJournalEntry() }) {
-                        if viewModel.isGeneratingSummary {
+                    Menu {
+                        Button {
+                            viewModel.saveJournalEntry()
+                        } label: {
+                            Label("Generate Journal Entry", systemImage: "book.pages")
+                        }
+                        .disabled(viewModel.messages.isEmpty || viewModel.isGeneratingSummary)
+                        
+                        Button {
+                            viewModel.saveChatTranscript()
+                        } label: {
+                            Label("Save Full Transcript", systemImage: "doc.text")
+                        }
+                        .disabled(viewModel.messages.isEmpty || viewModel.isSavingTranscript)
+                    } label: {
+                        if viewModel.isGeneratingSummary || viewModel.isSavingTranscript {
                             ProgressView()
                         } else {
-                            Image(systemName: "checkmark")
+                            Image(systemName: "square.and.arrow.down")
                         }
                     }
-                    .disabled(viewModel.messages.isEmpty || viewModel.isSaving || viewModel.isGeneratingSummary)
+                    .disabled(viewModel.messages.isEmpty)
                     
-                    Button(action: { viewModel.saveChatTranscript() }) {
-                        Image(systemName: "arrow.down.doc")
+                    Button(action: { showingHelp = true }) {
+                        Image(systemName: "questionmark.circle")
                     }
-                    .disabled(viewModel.messages.isEmpty || viewModel.isSavingTranscript)
                     
                     Button(action: { navigationState.navigate(to: .settings) }) {
                         Image(systemName: "gearshape")
                     }
                 }
             }
+        }
+        .onAppear {
+            if !hasSeenWelcome {
+                showingWelcome = true
+            }
+        }
+        .sheet(isPresented: $showingWelcome) {
+            WelcomeView(isPresented: $showingWelcome)
+                .onDisappear {
+                    hasSeenWelcome = true
+                }
+        }
+        .sheet(isPresented: $showingHelp) {
+            HelpGuideView()
         }
         .alert("Error", isPresented: .constant(viewModel.error != nil)) {
             Button("OK") { viewModel.clearError() }
@@ -121,10 +155,38 @@ struct ChatScreen: View {
                     formattedContent: summary,
                     isGenerating: viewModel.isGeneratingSummary,
                     onAccept: {
-                        viewModel.acceptSummaryAndSave(summary)
+                        print("DEBUG: Save button clicked in preview dialog")
+                        print("DEBUG: Summary length: \(summary.count)")
+                        
+                        // Prepare the document and content
+                        let doc = TextDocument(content: summary)
+                        print("DEBUG: Document created with content length: \(doc.content.count)")
+                        documentToExport = doc
+                        contentToShare = summary
+                        
+                        // Close the sheet
                         showingSummaryPreview = false
+                        
+                        // Try file exporter first, if it doesn't work, use share sheet
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                            print("DEBUG: About to trigger save dialog")
+                            print("DEBUG: documentToExport is nil? \(documentToExport == nil)")
+                            
+                            #if targetEnvironment(simulator)
+                            // In simulator, use share sheet which works more reliably
+                            print("DEBUG: Running in simulator - using share sheet")
+                            showingShareSheet = true
+                            #else
+                            // On real device, use file exporter
+                            print("DEBUG: Running on device - using file exporter")
+                            showingFileExporter = true
+                            #endif
+                            
+                            print("DEBUG: Save dialog triggered")
+                        }
                     },
                     onReject: {
+                        print("DEBUG: Cancel button clicked in preview dialog")
                         viewModel.rejectSummary()
                         showingSummaryPreview = false
                     }
@@ -132,37 +194,55 @@ struct ChatScreen: View {
             }
         }
         .onChange(of: viewModel.formattedSummary) { summary in
+            print("DEBUG: formattedSummary changed - is nil? \(summary == nil)")
             showingSummaryPreview = summary != nil
+        }
+        .onChange(of: viewModel.isSaving) { isSaving in
+            print("DEBUG: isSaving changed to: \(isSaving)")
+        }
+        .onChange(of: showingFileExporter) { showing in
+            print("DEBUG: showingFileExporter changed to: \(showing)")
         }
         .fileExporter(
             isPresented: Binding(
-                get: { viewModel.isSaving && viewModel.formattedSummary != nil },
-                set: { 
-                    if !$0 && viewModel.isSaving {
-                        viewModel.onFileSaved(success: false)
+                get: { showingFileExporter && documentToExport != nil },
+                set: { newValue in
+                    showingFileExporter = newValue
+                    if !newValue {
+                        print("DEBUG: File exporter dismissed")
                     }
                 }
             ),
-            document: TextDocument(content: viewModel.formattedSummary ?? ""),
+            document: documentToExport ?? TextDocument(content: ""),
             contentType: .plainText,
             defaultFilename: FileStorageService.shared.generateJournalEntryFilename()
         ) { result in
+            print("DEBUG: File exporter result received")
             switch result {
             case .success(let url):
+                print("DEBUG: File saved successfully to: \(url)")
                 viewModel.onFileSaved(success: true, filePath: url.lastPathComponent)
-            case .failure:
+            case .failure(let error):
+                print("DEBUG: File save failed or cancelled: \(error)")
                 viewModel.onFileSaved(success: false)
+            }
+            // Clean up
+            documentToExport = nil
+            showingFileExporter = false
+        }
+        .sheet(isPresented: $showingShareSheet) {
+            if let content = contentToShare {
+                ShareSheet(activityItems: [content, createTextFile(content: content)])
+                    .onDisappear {
+                        print("DEBUG: Share sheet dismissed")
+                        viewModel.onFileSaved(success: true, filePath: "via Share Sheet")
+                        contentToShare = nil
+                        showingShareSheet = false
+                    }
             }
         }
         .fileExporter(
-            isPresented: Binding(
-                get: { viewModel.isSavingTranscript && viewModel.chatTranscript != nil },
-                set: { 
-                    if !$0 && viewModel.isSavingTranscript {
-                        viewModel.onTranscriptSaved(success: false)
-                    }
-                }
-            ),
+            isPresented: $viewModel.isSavingTranscript,
             document: TextDocument(content: viewModel.chatTranscript ?? ""),
             contentType: .plainText,
             defaultFilename: FileStorageService.shared.generateTranscriptFilename()
@@ -243,21 +323,38 @@ struct SpeechInputBar: View {
     let enabled: Bool
     
     var body: some View {
-        HStack {
-            Spacer()
-            Button(action: isListening ? onStopListening : onStartListening) {
-                Image(systemName: "mic.fill")
-                    .font(.title)
-                    .foregroundColor(.white)
-                    .frame(width: 64, height: 64)
-                    .background(isListening ? Color.red : (enabled ? Color.blue : Color.gray))
-                    .clipShape(Circle())
-            }
-            .disabled(!enabled)
+        VStack(spacing: 8) {
+            #if targetEnvironment(simulator)
+            Text("🧪 Simulator Mode: Using test speech")
+                .font(.caption)
+                .foregroundColor(.orange)
+                .padding(.horizontal)
+            #endif
             
-            Text(isListening ? "Listening... Tap to stop" : "Tap to start speaking")
+            HStack {
+                Spacer()
+                Button(action: isListening ? onStopListening : onStartListening) {
+                    Image(systemName: "mic.fill")
+                        .font(.title)
+                        .foregroundColor(.white)
+                        .frame(width: 64, height: 64)
+                        .background(isListening ? Color.red : (enabled ? Color.blue : Color.gray))
+                        .clipShape(Circle())
+                }
+                .disabled(!enabled)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(isListening ? "Listening... Tap to stop" : "Tap to start speaking")
+                    #if targetEnvironment(simulator)
+                    Text("Will generate test speech in 2s")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    #endif
+                }
                 .padding(.leading, 16)
-            Spacer()
+                
+                Spacer()
+            }
         }
         .padding()
         .background(Color(.systemBackground))
@@ -377,4 +474,41 @@ struct TextDocument: FileDocument {
         return FileWrapper(regularFileWithContents: data)
     }
 }
+
+// MARK: - Share Sheet for Simulator
+import UIKit
+struct ShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+    let applicationActivities: [UIActivity]? = nil
+    
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let controller = UIActivityViewController(
+            activityItems: activityItems,
+            applicationActivities: applicationActivities
+        )
+        return controller
+    }
+    
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+// Helper function to create a temporary file URL for sharing
+func createTextFile(content: String) -> URL {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+    let filename = "journal_entry_\(formatter.string(from: Date())).md"
+    
+    let tempDir = FileManager.default.temporaryDirectory
+    let fileURL = tempDir.appendingPathComponent(filename)
+    
+    do {
+        try content.write(to: fileURL, atomically: true, encoding: .utf8)
+        print("DEBUG: Temp file created at: \(fileURL)")
+        return fileURL
+    } catch {
+        print("DEBUG: Error creating temp file: \(error)")
+        return tempDir
+    }
+}
+
 

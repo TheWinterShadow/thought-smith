@@ -5,21 +5,9 @@
       location = "self:">
    </FileRef>
    <FileRef
-      location = "group:thoughtsmithTests.swift">
+      location = "group:HelpGuideView.swift">
    </FileRef>
    <FileRef
-      location = "group:ViewModelTests.swift">
-   </FileRef>
-   <FileRef
-      location = "group:ServiceTests.swift">
-   </FileRef>
-   <FileRef
-      location = "group:.swift">
-   </FileRef>
-   <FileRef
-      location = "group:TEST_SETUP_INSTRUCTIONS.md">
-   </FileRef>
-   <FileRef
-      location = "group:TEST_README.md">
+      location = "group:WelcomeView.swift">
    </FileRef>
 </Workspace>

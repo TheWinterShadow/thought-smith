@@ -12,6 +12,7 @@ struct SettingsScreen: View {
     @StateObject private var viewModel = SettingsViewModel()
     @EnvironmentObject private var navigationState: NavigationState
     @State private var selectedTab = 0
+    @State private var showingHelp = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -42,12 +43,21 @@ struct SettingsScreen: View {
                 }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: {
-                    navigationState.navigate(to: .logs)
-                }) {
-                    Text("Logs")
+                HStack(spacing: 16) {
+                    Button(action: { showingHelp = true }) {
+                        Image(systemName: "questionmark.circle")
+                    }
+                    
+                    Button(action: {
+                        navigationState.navigate(to: .logs)
+                    }) {
+                        Text("Logs")
+                    }
                 }
             }
+        }
+        .sheet(isPresented: $showingHelp) {
+            HelpGuideView()
         }
         .alert("Success", isPresented: .constant(viewModel.saveSuccess)) {
             Button("OK") { viewModel.clearSaveSuccess() }
