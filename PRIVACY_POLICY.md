@@ -4,7 +4,7 @@
 
 ## Introduction
 
-Thought Smith ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our Android mobile application Thought Smith (the "App"). 
+Thought Smith ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application Thought Smith (the "App"), available on Android and iOS.
 
 Please read this Privacy Policy carefully. If you do not agree with the terms of this Privacy Policy, please do not access or use the App.
 
@@ -19,7 +19,6 @@ Please read this Privacy Policy carefully. If you do not agree with the terms of
 ### Automatically Collected Information
 - **App Usage Data**: Basic information about how you use the app (feature usage, session duration)
 - **Device Information**: Device type, operating system version, app version
-- **Log Data**: Technical logs for debugging and error tracking (stored locally on your device)
 
 ### Information We Do NOT Collect
 - We do not collect personal identifiers (name, email, phone number)
@@ -30,7 +29,7 @@ Please read this Privacy Policy carefully. If you do not agree with the terms of
 ## How We Use Your Information
 
 ### Local Processing
-- All chat conversations are processed locally on your device
+- All chat conversations are processed locally on your device and only shared with the AI provider of your choice
 - Journal entries are created and stored locally unless you choose to export them
 - App settings and preferences are stored locally on your device
 - Log data is stored locally for debugging purposes
@@ -46,13 +45,13 @@ When you provide API keys and use AI features, your chat messages are sent to yo
 ## Data Storage and Security
 
 ### Local Storage
-- All user data is stored locally on your Android device
-- API keys are securely stored in Android's encrypted shared preferences
+- All user data is stored locally on your device
+- API keys are securely stored using platform-native encrypted storage
 - Chat conversations are temporarily stored in memory and not persisted unless you create a journal entry
 - Journal entries are saved as local files only when you explicitly choose to export them
 
 ### Data Security
-- API keys are encrypted using Android's built-in security mechanisms
+- API keys are encrypted using platform-native security mechanisms
 - No data is transmitted to our servers
 - All communication with AI services uses HTTPS encryption
 - You have full control over data export and deletion
@@ -60,7 +59,7 @@ When you provide API keys and use AI features, your chat messages are sent to yo
 ### Data Retention
 - Chat conversations are not permanently stored unless you create and save a journal entry
 - Saved journal entries remain on your device until you delete them
-- App logs are automatically cleared based on Android system settings
+- App logs are automatically cleared based on system settings
 - Uninstalling the app removes all locally stored data
 
 ## Data Sharing and Disclosure
@@ -90,9 +89,10 @@ We may disclose information if required by law, but since we don't collect or st
 - **API Key Management**: You can update or remove your AI API keys at any time
 
 ### App Permissions
-The app requests the following Android permissions:
+The app requests platform-appropriate permissions:
 - **Internet**: Required to communicate with AI services
 - **Storage**: Required to save and export journal entries to files
+- **Microphone** (optional): Required for speech-to-text functionality
 
 You can revoke these permissions through your device settings, though this may limit app functionality.
 
@@ -118,20 +118,21 @@ This app integrates with third-party AI services. Please review their privacy po
 
 ## Data Processing Location
 
-- **Local Processing**: All app functionality and data storage occurs locally on your Android device
+- **Local Processing**: All app functionality and data storage occurs locally on your device
 - **AI Processing**: When using AI features, your messages are sent directly to your chosen AI provider's servers, which may be located in various countries depending on the provider
 
 ## Contact Information
 
 If you have any questions or concerns about this Privacy Policy or our data practices, please contact us at:
 
-**Email**: [Create a dedicated email for privacy inquiries]
+**Email**: help@TheWinterShadow.com
+
 **GitHub**: https://github.com/TheWinterShadow/thought-smith
 
 ## Compliance
 
 This Privacy Policy is designed to comply with:
-- Google Play Store privacy requirements
+- Google Play Store and Apple App Store privacy requirements
 - General Data Protection Regulation (GDPR) principles
 - California Consumer Privacy Act (CCPA) principles
 - Android privacy best practices
