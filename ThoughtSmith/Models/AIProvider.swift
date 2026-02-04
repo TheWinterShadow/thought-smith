@@ -54,9 +54,7 @@ struct AIModels {
     ]
     
     static let geminiModels = [
-        AIModel(provider: .gemini, modelName: "gemini-1.5-pro", displayName: "Gemini 1.5 Pro"),
-        AIModel(provider: .gemini, modelName: "gemini-1.5-flash", displayName: "Gemini 1.5 Flash"),
-        AIModel(provider: .gemini, modelName: "gemini-pro", displayName: "Gemini Pro")
+        AIModel(provider: .gemini, modelName: "gemini-3-flash-preview", displayName: "Gemini 3 Flash Preview"),
     ]
     
     static let anthropicModels = [

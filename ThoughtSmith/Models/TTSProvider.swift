@@ -13,7 +13,6 @@ enum TTSProvider: String, Codable, CaseIterable, Hashable {
     case local
     case openAI
     case gemini
-    case anthropic
     case awsPolly
     
     var displayName: String {
@@ -24,8 +23,6 @@ enum TTSProvider: String, Codable, CaseIterable, Hashable {
             return "OpenAI TTS"
         case .gemini:
             return "Google Gemini TTS"
-        case .anthropic:
-            return "Anthropic TTS"
         case .awsPolly:
             return "AWS Polly"
         }

@@ -30,6 +30,7 @@ class SpeechService: NSObject, ObservableObject {
     private let aiService = AIService.shared
     
     private var recognitionContinuation: CheckedContinuation<String, Error>?
+    private var audioPlayer: AVAudioPlayer?
     
     override init() {
         super.init()
@@ -203,8 +204,6 @@ class SpeechService: NSObject, ObservableObject {
             await speakOpenAI(text, apiKey: settings.ttsOpenAIApiKey, model: settings.ttsOpenAIModel)
         case .gemini:
             await speakGemini(text, apiKey: settings.ttsGeminiApiKey, model: settings.ttsGeminiModel, voiceName: settings.ttsGeminiVoiceName)
-        case .anthropic:
-            await speakAnthropic(text, apiKey: settings.ttsAnthropicApiKey)
         case .awsPolly:
             await speakAWSPolly(text, accessKey: settings.awsAccessKey, secretKey: settings.awsSecretKey, region: settings.awsRegion)
         }
@@ -295,23 +294,81 @@ class SpeechService: NSObject, ObservableObject {
     
     /// Play audio data using AVAudioPlayer.
     private func playAudioData(_ audioData: Data, isMP3: Bool, isPCM: Bool = false) async {
-        // For PCM data from Gemini, we'd need to convert to WAV format
-        // For simplicity, we'll use AVAudioPlayer which supports MP3
-        // PCM conversion would require adding WAV headers
-        
         do {
-            let player = try AVAudioPlayer(data: audioData)
+            // If it's PCM data, we need to convert to WAV format
+            let playableData: Data
+            if isPCM {
+                playableData = try convertPCMToWAV(audioData)
+            } else {
+                playableData = audioData
+            }
+            
+            // Setup audio session for playback
+            let audioSession = AVAudioSession.sharedInstance()
+            try audioSession.setCategory(.playback, mode: .default, options: [])
+            try audioSession.setActive(true)
+            
+            // Create and configure audio player (keep strong reference)
+            audioPlayer = try AVAudioPlayer(data: playableData)
+            guard let player = audioPlayer else {
+                throw SpeechServiceError.setupFailed
+            }
+            
             player.delegate = self
-            player.play()
+            
+            if player.play() {
+                AppLogger.shared.info("SpeechService", "Audio playback started successfully")
+            } else {
+                AppLogger.shared.error("SpeechService", "Failed to start audio playback")
+                isSpeaking = false
+            }
         } catch {
             AppLogger.shared.error("SpeechService", "Failed to create audio player", error: error)
             isSpeaking = false
         }
     }
     
+    /// Convert raw PCM audio data to WAV format with proper headers.
+    private func convertPCMToWAV(_ pcmData: Data) throws -> Data {
+        var wavData = Data()
+        
+        // Assuming 16-bit PCM, 24kHz sample rate, mono
+        let sampleRate: UInt32 = 24000
+        let bitsPerSample: UInt16 = 16
+        let numChannels: UInt16 = 1
+        let byteRate = sampleRate * UInt32(numChannels) * UInt32(bitsPerSample / 8)
+        let blockAlign = numChannels * (bitsPerSample / 8)
+        let dataSize = UInt32(pcmData.count)
+        let fileSize = dataSize + 36
+        
+        // RIFF header
+        wavData.append(contentsOf: [0x52, 0x49, 0x46, 0x46]) // "RIFF"
+        wavData.append(contentsOf: withUnsafeBytes(of: fileSize.littleEndian) { Data($0) })
+        wavData.append(contentsOf: [0x57, 0x41, 0x56, 0x45]) // "WAVE"
+        
+        // fmt subchunk
+        wavData.append(contentsOf: [0x66, 0x6D, 0x74, 0x20]) // "fmt "
+        wavData.append(contentsOf: withUnsafeBytes(of: UInt32(16).littleEndian) { Data($0) }) // Subchunk size
+        wavData.append(contentsOf: withUnsafeBytes(of: UInt16(1).littleEndian) { Data($0) }) // Audio format (PCM)
+        wavData.append(contentsOf: withUnsafeBytes(of: numChannels.littleEndian) { Data($0) })
+        wavData.append(contentsOf: withUnsafeBytes(of: sampleRate.littleEndian) { Data($0) })
+        wavData.append(contentsOf: withUnsafeBytes(of: byteRate.littleEndian) { Data($0) })
+        wavData.append(contentsOf: withUnsafeBytes(of: blockAlign.littleEndian) { Data($0) })
+        wavData.append(contentsOf: withUnsafeBytes(of: bitsPerSample.littleEndian) { Data($0) })
+        
+        // data subchunk
+        wavData.append(contentsOf: [0x64, 0x61, 0x74, 0x61]) // "data"
+        wavData.append(contentsOf: withUnsafeBytes(of: dataSize.littleEndian) { Data($0) })
+        wavData.append(pcmData)
+        
+        return wavData
+    }
+    
     /// Stop speaking if currently speaking.
     func stopSpeaking() {
         speechSynthesizer.stopSpeaking(at: .immediate)
+        audioPlayer?.stop()
+        audioPlayer = nil
         isSpeaking = false
     }
     

@@ -263,25 +263,6 @@ struct SpeechTab: View {
                 }
             }
             
-            if viewModel.settings.ttsProvider == .anthropic {
-                Section("Anthropic TTS Configuration") {
-                    Text("Note: Anthropic TTS API is not yet publicly available.")
-                        .font(.caption)
-                        .foregroundColor(.red)
-                    TextField("Model", text: Binding(
-                        get: { viewModel.settings.ttsAnthropicModel },
-                        set: { viewModel.updateTTSAnthropicModel($0) }
-                    ))
-                    TextField("API Key", text: Binding(
-                        get: { viewModel.settings.ttsAnthropicApiKey },
-                        set: { viewModel.updateTTSAnthropicApiKey($0) }
-                    ))
-                    .textContentType(.password)
-                    .autocapitalization(.none)
-                    .autocorrectionDisabled()
-                }
-            }
-            
             if viewModel.settings.ttsProvider == .awsPolly {
                 Section("AWS Polly Configuration") {
                     TextField("AWS Access Key ID", text: Binding(
