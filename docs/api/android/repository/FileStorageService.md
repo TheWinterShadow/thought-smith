@@ -1,0 +1,6 @@
+# FileStorageService
+
+```kotlin
+class FileStorageService
+```
+
